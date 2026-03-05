@@ -1,0 +1,728 @@
+{
+  "format": "OPynSees2000",
+  "version": 1,
+  "model": {
+    "ndm": 3,
+    "ndf": 6,
+    "nodes": {
+      "1": {
+        "tag": 1,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "fixity": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "mass": []
+      },
+      "2": {
+        "tag": 2,
+        "x": 5.0,
+        "y": 0.0,
+        "z": 0.0,
+        "fixity": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "mass": []
+      },
+      "3": {
+        "tag": 3,
+        "x": 10.0,
+        "y": 0.0,
+        "z": 0.0,
+        "fixity": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "mass": []
+      },
+      "4": {
+        "tag": 4,
+        "x": 0.0,
+        "y": 4.0,
+        "z": 0.0,
+        "fixity": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "mass": []
+      },
+      "5": {
+        "tag": 5,
+        "x": 5.0,
+        "y": 4.0,
+        "z": 0.0,
+        "fixity": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "mass": []
+      },
+      "6": {
+        "tag": 6,
+        "x": 10.0,
+        "y": 4.0,
+        "z": 0.0,
+        "fixity": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "mass": []
+      },
+      "7": {
+        "tag": 7,
+        "x": 0.0,
+        "y": 8.0,
+        "z": 0.0,
+        "fixity": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "mass": []
+      },
+      "8": {
+        "tag": 8,
+        "x": 5.0,
+        "y": 8.0,
+        "z": 0.0,
+        "fixity": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "mass": []
+      },
+      "9": {
+        "tag": 9,
+        "x": 10.0,
+        "y": 8.0,
+        "z": 0.0,
+        "fixity": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "mass": []
+      },
+      "10": {
+        "tag": 10,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 3.5,
+        "fixity": [],
+        "mass": []
+      },
+      "11": {
+        "tag": 11,
+        "x": 5.0,
+        "y": 0.0,
+        "z": 3.5,
+        "fixity": [],
+        "mass": []
+      },
+      "12": {
+        "tag": 12,
+        "x": 10.0,
+        "y": 0.0,
+        "z": 3.5,
+        "fixity": [],
+        "mass": []
+      },
+      "13": {
+        "tag": 13,
+        "x": 0.0,
+        "y": 4.0,
+        "z": 3.5,
+        "fixity": [],
+        "mass": []
+      },
+      "14": {
+        "tag": 14,
+        "x": 5.0,
+        "y": 4.0,
+        "z": 3.5,
+        "fixity": [],
+        "mass": []
+      },
+      "15": {
+        "tag": 15,
+        "x": 10.0,
+        "y": 4.0,
+        "z": 3.5,
+        "fixity": [],
+        "mass": []
+      },
+      "16": {
+        "tag": 16,
+        "x": 0.0,
+        "y": 8.0,
+        "z": 3.5,
+        "fixity": [],
+        "mass": []
+      },
+      "17": {
+        "tag": 17,
+        "x": 5.0,
+        "y": 8.0,
+        "z": 3.5,
+        "fixity": [],
+        "mass": []
+      },
+      "18": {
+        "tag": 18,
+        "x": 10.0,
+        "y": 8.0,
+        "z": 3.5,
+        "fixity": [],
+        "mass": []
+      },
+      "19": {
+        "tag": 19,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 7.0,
+        "fixity": [],
+        "mass": []
+      },
+      "20": {
+        "tag": 20,
+        "x": 5.0,
+        "y": 0.0,
+        "z": 7.0,
+        "fixity": [],
+        "mass": []
+      },
+      "21": {
+        "tag": 21,
+        "x": 10.0,
+        "y": 0.0,
+        "z": 7.0,
+        "fixity": [],
+        "mass": []
+      },
+      "22": {
+        "tag": 22,
+        "x": 0.0,
+        "y": 4.0,
+        "z": 7.0,
+        "fixity": [],
+        "mass": []
+      },
+      "23": {
+        "tag": 23,
+        "x": 5.0,
+        "y": 4.0,
+        "z": 7.0,
+        "fixity": [],
+        "mass": []
+      },
+      "24": {
+        "tag": 24,
+        "x": 10.0,
+        "y": 4.0,
+        "z": 7.0,
+        "fixity": [],
+        "mass": []
+      },
+      "25": {
+        "tag": 25,
+        "x": 0.0,
+        "y": 8.0,
+        "z": 7.0,
+        "fixity": [],
+        "mass": []
+      },
+      "26": {
+        "tag": 26,
+        "x": 5.0,
+        "y": 8.0,
+        "z": 7.0,
+        "fixity": [],
+        "mass": []
+      },
+      "27": {
+        "tag": 27,
+        "x": 10.0,
+        "y": 8.0,
+        "z": 7.0,
+        "fixity": [],
+        "mass": []
+      }
+    },
+    "materials": {
+      "1": {
+        "tag": 1,
+        "name": "Concreto f'c=28 MPa",
+        "mat_type": "Elastic",
+        "params": {
+          "E": 24821000.0
+        }
+      }
+    },
+    "sections": {
+      "1": {
+        "tag": 1,
+        "name": "Columna 40×40",
+        "sec_type": "Elastic3D",
+        "params": {
+          "A": 0.16,
+          "E": 24821000.0,
+          "Iz": 0.0021333,
+          "Iy": 0.0021333,
+          "G": 10342000.0,
+          "J": 0.0036053
+        }
+      },
+      "2": {
+        "tag": 2,
+        "name": "Viga 30×50",
+        "sec_type": "Elastic3D",
+        "params": {
+          "A": 0.15,
+          "E": 24821000.0,
+          "Iz": 0.003125,
+          "Iy": 0.001125,
+          "G": 10342000.0,
+          "J": 0.003516
+        }
+      }
+    },
+    "geom_transfs": {
+      "1": {
+        "tag": 1,
+        "transf_type": "PDelta",
+        "vecxz": [
+          1.0,
+          0.0,
+          0.0
+        ]
+      },
+      "2": {
+        "tag": 2,
+        "transf_type": "Linear",
+        "vecxz": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    },
+    "elements": {
+      "1": {
+        "tag": 1,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 1,
+        "node_j": 10,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "2": {
+        "tag": 2,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 2,
+        "node_j": 11,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "3": {
+        "tag": 3,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 3,
+        "node_j": 12,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "4": {
+        "tag": 4,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 4,
+        "node_j": 13,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "5": {
+        "tag": 5,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 5,
+        "node_j": 14,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "6": {
+        "tag": 6,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 6,
+        "node_j": 15,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "7": {
+        "tag": 7,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 7,
+        "node_j": 16,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "8": {
+        "tag": 8,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 8,
+        "node_j": 17,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "9": {
+        "tag": 9,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 9,
+        "node_j": 18,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "10": {
+        "tag": 10,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 10,
+        "node_j": 19,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "11": {
+        "tag": 11,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 11,
+        "node_j": 20,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "12": {
+        "tag": 12,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 12,
+        "node_j": 21,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "13": {
+        "tag": 13,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 13,
+        "node_j": 22,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "14": {
+        "tag": 14,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 14,
+        "node_j": 23,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "15": {
+        "tag": 15,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 15,
+        "node_j": 24,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "16": {
+        "tag": 16,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 16,
+        "node_j": 25,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "17": {
+        "tag": 17,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 17,
+        "node_j": 26,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "18": {
+        "tag": 18,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 18,
+        "node_j": 27,
+        "section_tag": 1,
+        "transf_tag": 1,
+        "params": {}
+      },
+      "19": {
+        "tag": 19,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 10,
+        "node_j": 11,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "20": {
+        "tag": 20,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 11,
+        "node_j": 12,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "21": {
+        "tag": 21,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 13,
+        "node_j": 14,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "22": {
+        "tag": 22,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 14,
+        "node_j": 15,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "23": {
+        "tag": 23,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 16,
+        "node_j": 17,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "24": {
+        "tag": 24,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 17,
+        "node_j": 18,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "25": {
+        "tag": 25,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 19,
+        "node_j": 20,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "26": {
+        "tag": 26,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 20,
+        "node_j": 21,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "27": {
+        "tag": 27,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 22,
+        "node_j": 23,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "28": {
+        "tag": 28,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 23,
+        "node_j": 24,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "29": {
+        "tag": 29,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 25,
+        "node_j": 26,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "30": {
+        "tag": 30,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 26,
+        "node_j": 27,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "31": {
+        "tag": 31,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 10,
+        "node_j": 13,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "32": {
+        "tag": 32,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 13,
+        "node_j": 16,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "33": {
+        "tag": 33,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 11,
+        "node_j": 14,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "34": {
+        "tag": 34,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 14,
+        "node_j": 17,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "35": {
+        "tag": 35,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 12,
+        "node_j": 15,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "36": {
+        "tag": 36,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 15,
+        "node_j": 18,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "37": {
+        "tag": 37,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 19,
+        "node_j": 22,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "38": {
+        "tag": 38,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 22,
+        "node_j": 25,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "39": {
+        "tag": 39,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 20,
+        "node_j": 23,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "40": {
+        "tag": 40,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 23,
+        "node_j": 26,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "41": {
+        "tag": 41,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 21,
+        "node_j": 24,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      },
+      "42": {
+        "tag": 42,
+        "elem_type": "elasticBeamColumn",
+        "node_i": 24,
+        "node_j": 27,
+        "section_tag": 2,
+        "transf_tag": 2,
+        "params": {}
+      }
+    },
+    "load_patterns": {}
+  }
+}

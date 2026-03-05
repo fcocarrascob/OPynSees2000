@@ -24,6 +24,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
+    QFileDialog,
     QMainWindow,
     QSplitter,
     QStatusBar,
@@ -37,6 +38,10 @@ from gui.panels.console_panel import ConsolePanel
 from gui.panels.model_tree import ModelTree
 from gui.panels.properties_panel import PropertiesPanel
 from gui.viewport.vtk_widget import VTKViewport
+from gui.core.project_io import save_project, load_project, FILE_FILTER
+from gui.dialogs.material_dialog import MaterialDialog
+from gui.dialogs.section_dialog import SectionDialog
+from gui.dialogs.transf_dialog import TransfDialog
 
 
 THEME_PATH = Path(__file__).parent / "theme" / "light.qss"
@@ -53,6 +58,7 @@ class MainWindow(QMainWindow):
 
         # Modelo de datos
         self._model = StructuralModel.create_demo()
+        self._current_file: Path | None = None
 
         # Widgets
         self._tree = ModelTree()
@@ -68,6 +74,7 @@ class MainWindow(QMainWindow):
 
         # Conexiones
         self._tree.item_selected.connect(self._on_tree_item_selected)
+        self._tree.itemDoubleClicked.connect(self._on_tree_item_double_clicked)
 
         # Carga inicial
         self._refresh_all()
@@ -117,6 +124,18 @@ class MainWindow(QMainWindow):
         act_new.triggered.connect(self._on_new_model)
         m_file.addAction(act_new)
 
+        act_open = QAction("Abrir...", self)
+        act_open.setShortcut(QKeySequence.StandardKey.Open)
+        act_open.triggered.connect(self._on_open)
+        m_file.addAction(act_open)
+
+        act_save = QAction("Guardar como...", self)
+        act_save.setShortcut(QKeySequence("Ctrl+Shift+S"))
+        act_save.triggered.connect(self._on_save_as)
+        m_file.addAction(act_save)
+
+        m_file.addSeparator()
+
         act_demo = QAction("Cargar demo", self)
         act_demo.triggered.connect(self._on_load_demo)
         m_file.addAction(act_demo)
@@ -133,15 +152,17 @@ class MainWindow(QMainWindow):
 
         act_mat = QAction("Materiales...", self)
         act_mat.setToolTip("Definir materiales uniaxiales")
-        act_mat.setEnabled(False)  # placeholder
+        act_mat.triggered.connect(self._on_define_material)
         m_define.addAction(act_mat)
 
         act_sec = QAction("Secciones...", self)
-        act_sec.setEnabled(False)
+        act_sec.setToolTip("Definir secciones transversales")
+        act_sec.triggered.connect(self._on_define_section)
         m_define.addAction(act_sec)
 
         act_transf = QAction("Transformaciones...", self)
-        act_transf.setEnabled(False)
+        act_transf.setToolTip("Definir transformaciones geométricas")
+        act_transf.triggered.connect(self._on_define_transf)
         m_define.addAction(act_transf)
 
         act_pattern = QAction("Patrones de carga...", self)
@@ -255,6 +276,16 @@ class MainWindow(QMainWindow):
         act_demo.triggered.connect(self._on_load_demo)
         tb.addAction(act_demo)
 
+        act_open_tb = QAction("Abrir", self)
+        act_open_tb.setToolTip("Abrir proyecto (Ctrl+O)")
+        act_open_tb.triggered.connect(self._on_open)
+        tb.addAction(act_open_tb)
+
+        act_save_tb = QAction("Guardar", self)
+        act_save_tb.setToolTip("Guardar como... (Ctrl+Shift+S)")
+        act_save_tb.triggered.connect(self._on_save_as)
+        tb.addAction(act_save_tb)
+
         tb.addSeparator()
 
         act_iso = QAction("3D", self)
@@ -309,6 +340,8 @@ class MainWindow(QMainWindow):
 
     def _on_new_model(self) -> None:
         self._model.clear()
+        self._current_file = None
+        self._update_title()
         self._refresh_all()
         self._console.log("Modelo limpiado.")
 
@@ -323,9 +356,134 @@ class MainWindow(QMainWindow):
     def _on_tree_item_selected(self, category: str, tag: int) -> None:
         self._properties.show_item(self._model, category, tag)
 
+    def _on_tree_item_double_clicked(self, item, column) -> None:
+        """Abre diálogo de edición al hacer doble-clic en un ítem del tree."""
+        category = item.data(0, 100)
+        tag = item.data(0, 101)
+        if tag is None:
+            return
+
+        if category == "materials":
+            mat = self._model.materials.get(tag)
+            if not mat:
+                return
+            dlg = MaterialDialog(self, material=mat)
+            if dlg.exec():
+                edited = dlg.get_material()
+                self._model.materials[tag] = edited
+                self._refresh_all()
+                self._console.log(f"Material {tag} editado: {edited.name}")
+
+        elif category == "sections":
+            sec = self._model.sections.get(tag)
+            if not sec:
+                return
+            dlg = SectionDialog(self, section=sec)
+            if dlg.exec():
+                edited = dlg.get_section()
+                self._model.sections[tag] = edited
+                self._refresh_all()
+                self._console.log(f"Sección {tag} editada: {edited.name}")
+
+        elif category == "geom_transfs":
+            transf = self._model.geom_transfs.get(tag)
+            if not transf:
+                return
+            dlg = TransfDialog(self, transf=transf)
+            if dlg.exec():
+                edited = dlg.get_transf()
+                self._model.geom_transfs[tag] = edited
+                self._refresh_all()
+                self._console.log(
+                    f"Transformación {tag} editada: {edited.transf_type.value}"
+                )
+
     def _on_about(self) -> None:
         dlg = AboutDialog(self)
         dlg.exec()
+
+    def _on_open(self) -> None:
+        """Abre un archivo .opss."""
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Abrir proyecto", "", FILE_FILTER,
+        )
+        if not path:
+            return
+        try:
+            self._model = load_project(Path(path))
+            self._current_file = Path(path)
+            self._refresh_all()
+            self._update_title()
+            self._console.log_success(f"Proyecto abierto: {path}")
+        except Exception as exc:
+            self._console.log_error(f"Error al abrir: {exc}")
+
+    def _on_save_as(self) -> None:
+        """Guarda el modelo como archivo .opss."""
+        default_name = str(self._current_file) if self._current_file else ""
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Guardar proyecto como", default_name, FILE_FILTER,
+        )
+        if not path:
+            return
+        if not path.endswith(".opss"):
+            path += ".opss"
+        try:
+            save_project(self._model, Path(path))
+            self._current_file = Path(path)
+            self._update_title()
+            self._console.log_success(f"Proyecto guardado: {path}")
+        except Exception as exc:
+            self._console.log_error(f"Error al guardar: {exc}")
+
+    def _on_define_material(self) -> None:
+        """Abre el diálogo para crear un nuevo material."""
+        dlg = MaterialDialog(
+            self,
+            next_tag=self._model.next_material_tag(),
+        )
+        if dlg.exec():
+            mat = dlg.get_material()
+            self._model.materials[mat.tag] = mat
+            self._refresh_all()
+            self._console.log_success(
+                f"Material creado: {mat.tag} — {mat.name} [{mat.mat_type.value}]"
+            )
+
+    def _on_define_section(self) -> None:
+        """Abre el diálogo para crear una nueva sección."""
+        dlg = SectionDialog(
+            self,
+            next_tag=self._model.next_section_tag(),
+        )
+        if dlg.exec():
+            sec = dlg.get_section()
+            self._model.sections[sec.tag] = sec
+            self._refresh_all()
+            self._console.log_success(
+                f"Sección creada: {sec.tag} — {sec.name} [{sec.sec_type.value}]"
+            )
+
+    def _on_define_transf(self) -> None:
+        """Abre el diálogo para crear una nueva transformación."""
+        dlg = TransfDialog(
+            self,
+            next_tag=self._model.next_transf_tag(),
+        )
+        if dlg.exec():
+            transf = dlg.get_transf()
+            self._model.geom_transfs[transf.tag] = transf
+            self._refresh_all()
+            self._console.log_success(
+                f"Transformación creada: {transf.tag} — {transf.transf_type.value}"
+            )
+
+    def _update_title(self) -> None:
+        """Actualiza el título de la ventana con el nombre del archivo."""
+        base = "OPynSees2000 — OpenSeesPy GUI"
+        if self._current_file:
+            base = f"{self._current_file.stem} — {base}"
+        self.setWindowTitle(base)
 
     def _refresh_all(self) -> None:
         """Refresca tree, viewport y statusbar."""

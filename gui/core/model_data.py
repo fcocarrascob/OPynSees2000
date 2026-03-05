@@ -83,6 +83,29 @@ class Node:
     def is_fully_fixed(self) -> bool:
         return all(f == 1 for f in self.fixity) and len(self.fixity) > 0
 
+    def to_dict(self) -> dict:
+        """Serializa el nodo a diccionario."""
+        return {
+            "tag": self.tag,
+            "x": self.x,
+            "y": self.y,
+            "z": self.z,
+            "fixity": list(self.fixity),
+            "mass": list(self.mass),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Node":
+        """Crea un nodo desde diccionario."""
+        return cls(
+            tag=d["tag"],
+            x=d["x"],
+            y=d["y"],
+            z=d.get("z", 0.0),
+            fixity=tuple(d.get("fixity", ())),
+            mass=tuple(d.get("mass", ())),
+        )
+
 
 @dataclass
 class Material:
@@ -92,6 +115,23 @@ class Material:
     mat_type: MaterialType
     params: dict = field(default_factory=dict)
     # params varía según tipo. Ej: Steel02 → {Fy, E0, b, R0, cR1, cR2}
+
+    def to_dict(self) -> dict:
+        return {
+            "tag": self.tag,
+            "name": self.name,
+            "mat_type": self.mat_type.value,
+            "params": dict(self.params),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Material":
+        return cls(
+            tag=d["tag"],
+            name=d["name"],
+            mat_type=MaterialType(d["mat_type"]),
+            params=d.get("params", {}),
+        )
 
 
 @dataclass
@@ -103,6 +143,23 @@ class Section:
     params: dict = field(default_factory=dict)
     # Ej Elastic3D: {A, E, Iz, Iy, G, J}
 
+    def to_dict(self) -> dict:
+        return {
+            "tag": self.tag,
+            "name": self.name,
+            "sec_type": self.sec_type.value,
+            "params": dict(self.params),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Section":
+        return cls(
+            tag=d["tag"],
+            name=d["name"],
+            sec_type=SectionType(d["sec_type"]),
+            params=d.get("params", {}),
+        )
+
 
 @dataclass
 class GeomTransf:
@@ -110,6 +167,21 @@ class GeomTransf:
     tag: int
     transf_type: TransfType
     vecxz: tuple[float, float, float] = (0.0, 0.0, 1.0)
+
+    def to_dict(self) -> dict:
+        return {
+            "tag": self.tag,
+            "transf_type": self.transf_type.value,
+            "vecxz": list(self.vecxz),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "GeomTransf":
+        return cls(
+            tag=d["tag"],
+            transf_type=TransfType(d["transf_type"]),
+            vecxz=tuple(d.get("vecxz", (0.0, 0.0, 1.0))),
+        )
 
 
 @dataclass
@@ -123,6 +195,29 @@ class Element:
     transf_tag: Optional[int] = None
     params: dict = field(default_factory=dict)
 
+    def to_dict(self) -> dict:
+        return {
+            "tag": self.tag,
+            "elem_type": self.elem_type.value,
+            "node_i": self.node_i,
+            "node_j": self.node_j,
+            "section_tag": self.section_tag,
+            "transf_tag": self.transf_tag,
+            "params": dict(self.params),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Element":
+        return cls(
+            tag=d["tag"],
+            elem_type=ElementType(d["elem_type"]),
+            node_i=d["node_i"],
+            node_j=d["node_j"],
+            section_tag=d.get("section_tag"),
+            transf_tag=d.get("transf_tag"),
+            params=d.get("params", {}),
+        )
+
 
 @dataclass
 class NodalLoad:
@@ -135,6 +230,21 @@ class NodalLoad:
     my: float = 0.0
     mz: float = 0.0
 
+    def to_dict(self) -> dict:
+        return {
+            "node_tag": self.node_tag,
+            "fx": self.fx, "fy": self.fy, "fz": self.fz,
+            "mx": self.mx, "my": self.my, "mz": self.mz,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "NodalLoad":
+        return cls(
+            node_tag=d["node_tag"],
+            fx=d.get("fx", 0.0), fy=d.get("fy", 0.0), fz=d.get("fz", 0.0),
+            mx=d.get("mx", 0.0), my=d.get("my", 0.0), mz=d.get("mz", 0.0),
+        )
+
 
 @dataclass
 class LoadPattern:
@@ -143,6 +253,23 @@ class LoadPattern:
     name: str
     time_series_type: str = "Constant"
     loads: list[NodalLoad] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {
+            "tag": self.tag,
+            "name": self.name,
+            "time_series_type": self.time_series_type,
+            "loads": [load.to_dict() for load in self.loads],
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "LoadPattern":
+        return cls(
+            tag=d["tag"],
+            name=d["name"],
+            time_series_type=d.get("time_series_type", "Constant"),
+            loads=[NodalLoad.from_dict(ld) for ld in d.get("loads", [])],
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +313,37 @@ class StructuralModel:
 
     def next_pattern_tag(self) -> int:
         return max(self.load_patterns.keys(), default=0) + 1
+
+    def to_dict(self) -> dict:
+        """Serializa el modelo completo a diccionario."""
+        return {
+            "ndm": self.ndm,
+            "ndf": self.ndf,
+            "nodes": {str(k): v.to_dict() for k, v in self.nodes.items()},
+            "materials": {str(k): v.to_dict() for k, v in self.materials.items()},
+            "sections": {str(k): v.to_dict() for k, v in self.sections.items()},
+            "geom_transfs": {str(k): v.to_dict() for k, v in self.geom_transfs.items()},
+            "elements": {str(k): v.to_dict() for k, v in self.elements.items()},
+            "load_patterns": {str(k): v.to_dict() for k, v in self.load_patterns.items()},
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "StructuralModel":
+        """Crea un modelo desde diccionario."""
+        model = cls(ndm=d.get("ndm", 3), ndf=d.get("ndf", 6))
+        for k, v in d.get("nodes", {}).items():
+            model.nodes[int(k)] = Node.from_dict(v)
+        for k, v in d.get("materials", {}).items():
+            model.materials[int(k)] = Material.from_dict(v)
+        for k, v in d.get("sections", {}).items():
+            model.sections[int(k)] = Section.from_dict(v)
+        for k, v in d.get("geom_transfs", {}).items():
+            model.geom_transfs[int(k)] = GeomTransf.from_dict(v)
+        for k, v in d.get("elements", {}).items():
+            model.elements[int(k)] = Element.from_dict(v)
+        for k, v in d.get("load_patterns", {}).items():
+            model.load_patterns[int(k)] = LoadPattern.from_dict(v)
+        return model
 
     def clear(self) -> None:
         """Borra todo el modelo."""
