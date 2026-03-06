@@ -14,12 +14,12 @@ Sprint 1 completado y commiteado. Branch `feat/gui-sap2000-workflow`.
 
 #### Step 4: Diálogo de Nodos
 
-- [ ] Crear `gui/dialogs/node_dialog.py`
-- [ ] Modificar `gui/main_window.py` para habilitar Dibujar → Nodo...
+- [x] Crear `gui/dialogs/node_dialog.py`
+- [x] Modificar `gui/main_window.py` para habilitar Dibujar → Nodo...
 
 ##### 4A. Crear `gui/dialogs/node_dialog.py`
 
-- [ ] Crear el archivo con el siguiente contenido completo:
+- [x] Crear el archivo con el siguiente contenido completo:
 
 ```python
 """
@@ -193,13 +193,13 @@ class NodeDialog(QDialog):
 
 ##### 4B. Modificar `gui/main_window.py` — Habilitar Nodo
 
-- [ ] Agregar import. Después de los imports de diálogos existentes, agregar:
+- [x] Agregar import. Después de los imports de diálogos existentes, agregar:
 
 ```python
 from gui.dialogs.node_dialog import NodeDialog
 ```
 
-- [ ] En `_build_menubar`, reemplazar el bloque del Nodo.
+- [x] En `_build_menubar`, reemplazar el bloque del Nodo.
 
 Reemplazar:
 ```python
@@ -215,7 +215,7 @@ Con:
         m_draw.addAction(act_node)
 ```
 
-- [ ] Agregar slot nuevo en la sección Slots:
+- [x] Agregar slot nuevo en la sección Slots:
 
 ```python
     def _on_draw_node(self) -> None:
@@ -236,7 +236,7 @@ Con:
             )
 ```
 
-- [ ] Expandir `_on_tree_item_double_clicked` para soportar nodos. Dentro del método, agregar antes del cierre:
+- [x] Expandir `_on_tree_item_double_clicked` para soportar nodos. Dentro del método, agregar antes del cierre:
 
 ```python
         elif category == "nodes":
@@ -280,14 +280,14 @@ git commit -m "feat: add node creation dialog
 
 #### Step 5: Diálogo de Elementos (Frames, Truss, Shell)
 
-- [ ] Crear `gui/dialogs/element_dialog.py`
-- [ ] Modificar `gui/core/model_data.py` para soportar elementos de 4 nodos (Shell)
-- [ ] Modificar `gui/viewport/vtk_widget.py` para renderizar shells
-- [ ] Modificar `gui/main_window.py` para habilitar Dibujar → Elemento...
+- [x] Crear `gui/dialogs/element_dialog.py`
+- [x] Modificar `gui/core/model_data.py` para soportar elementos de 4 nodos (Shell)
+- [x] Modificar `gui/viewport/vtk_widget.py` para renderizar shells
+- [x] Modificar `gui/main_window.py` para habilitar Dibujar → Elemento...
 
 ##### 5A. Modificar `gui/core/model_data.py` — Soporte Shell (4 nodos)
 
-- [ ] En la clase `Element`, agregar campos para nodos adicionales (Shell).
+- [x] En la clase `Element`, agregar campos para nodos adicionales (Shell).
 
 Reemplazar la clase `Element` completa:
 
@@ -350,7 +350,7 @@ class Element:
 
 ##### 5B. Crear `gui/dialogs/element_dialog.py`
 
-- [ ] Crear el archivo con el siguiente contenido completo:
+- [x] Crear el archivo con el siguiente contenido completo:
 
 ```python
 """
@@ -578,7 +578,7 @@ class ElementDialog(QDialog):
 
 ##### 5C. Modificar `gui/viewport/vtk_widget.py` — Renderizar Shells
 
-- [ ] Agregar método `_add_shells` en la clase `VTKViewport`. Insertar después de `_add_elements`:
+- [x] Agregar método `_add_shells` en la clase `VTKViewport`. Insertar después de `_add_elements`:
 
 ```python
     def _add_shells(self, model: StructuralModel) -> None:
@@ -623,7 +623,7 @@ class ElementDialog(QDialog):
         )
 ```
 
-- [ ] En `_add_elements`, filtrar los elementos shell para que no se dibujen como líneas. Modificar el loop para saltear shells:
+- [x] En `_add_elements`, filtrar los elementos shell para que no se dibujen como líneas. Modificar el loop para saltear shells:
 
 En el método `_add_elements`, dentro del `for elem in model.elements.values():`, agregar al inicio del loop:
 ```python
@@ -631,7 +631,7 @@ En el método `_add_elements`, dentro del `for elem in model.elements.values():`
                 continue
 ```
 
-- [ ] En `display_model`, agregar la llamada a `_add_shells`. Después de `self._add_elements(model)`, agregar:
+- [x] En `display_model`, agregar la llamada a `_add_shells`. Después de `self._add_elements(model)`, agregar:
 
 ```python
         self._add_shells(model)
@@ -639,13 +639,13 @@ En el método `_add_elements`, dentro del `for elem in model.elements.values():`
 
 ##### 5D. Modificar `gui/main_window.py` — Habilitar Elemento
 
-- [ ] Agregar import:
+- [x] Agregar import:
 
 ```python
 from gui.dialogs.element_dialog import ElementDialog
 ```
 
-- [ ] En `_build_menubar`, reemplazar el bloque de Elemento.
+- [x] En `_build_menubar`, reemplazar el bloque de Elemento.
 
 Reemplazar:
 ```python
@@ -661,7 +661,7 @@ Con:
         m_draw.addAction(act_elem)
 ```
 
-- [ ] Agregar slot:
+- [x] Agregar slot:
 
 ```python
     def _on_draw_element(self) -> None:
@@ -681,7 +681,7 @@ Con:
             )
 ```
 
-- [ ] Expandir `_on_tree_item_double_clicked` para soportar elementos:
+- [x] Expandir `_on_tree_item_double_clicked` para soportar elementos:
 
 Agregar al final del método:
 ```python
@@ -730,12 +730,12 @@ git commit -m "feat: add element creation dialog with shell support
 
 #### Step 6: Asignar Restricciones (Fixity)
 
-- [ ] Crear `gui/dialogs/fixity_dialog.py`
-- [ ] Modificar `gui/main_window.py` para habilitar Asignar → Restricciones...
+- [x] Crear `gui/dialogs/fixity_dialog.py`
+- [x] Modificar `gui/main_window.py` para habilitar Asignar → Restricciones...
 
 ##### 6A. Crear `gui/dialogs/fixity_dialog.py`
 
-- [ ] Crear el archivo con el siguiente contenido completo:
+- [x] Crear el archivo con el siguiente contenido completo:
 
 ```python
 """
@@ -988,13 +988,13 @@ class FixityDialog(QDialog):
 
 ##### 6B. Modificar `gui/main_window.py` — Habilitar Restricciones
 
-- [ ] Agregar import:
+- [x] Agregar import:
 
 ```python
 from gui.dialogs.fixity_dialog import FixityDialog
 ```
 
-- [ ] En `_build_menubar`, reemplazar el bloque de Restricciones.
+- [x] En `_build_menubar`, reemplazar el bloque de Restricciones.
 
 Reemplazar:
 ```python
@@ -1010,7 +1010,7 @@ Con:
         m_assign.addAction(act_fix)
 ```
 
-- [ ] Agregar slot:
+- [x] Agregar slot:
 
 ```python
     def _on_assign_fixity(self) -> None:

@@ -39,7 +39,10 @@ from gui.panels.model_tree import ModelTree
 from gui.panels.properties_panel import PropertiesPanel
 from gui.viewport.vtk_widget import VTKViewport
 from gui.core.project_io import save_project, load_project, FILE_FILTER
+from gui.dialogs.element_dialog import ElementDialog
+from gui.dialogs.fixity_dialog import FixityDialog
 from gui.dialogs.material_dialog import MaterialDialog
+from gui.dialogs.node_dialog import NodeDialog
 from gui.dialogs.section_dialog import SectionDialog
 from gui.dialogs.transf_dialog import TransfDialog
 
@@ -173,18 +176,21 @@ class MainWindow(QMainWindow):
         m_draw = mb.addMenu("Di&bujar")
 
         act_node = QAction("Nodo...", self)
-        act_node.setEnabled(False)
+        act_node.setToolTip("Agregar nodos al modelo")
+        act_node.triggered.connect(self._on_draw_node)
         m_draw.addAction(act_node)
 
         act_elem = QAction("Elemento...", self)
-        act_elem.setEnabled(False)
+        act_elem.setToolTip("Agregar elementos al modelo")
+        act_elem.triggered.connect(self._on_draw_element)
         m_draw.addAction(act_elem)
 
         # --- Asignar ---
         m_assign = mb.addMenu("&Asignar")
 
         act_fix = QAction("Restricciones...", self)
-        act_fix.setEnabled(False)
+        act_fix.setToolTip("Asignar condiciones de borde a nodos")
+        act_fix.triggered.connect(self._on_assign_fixity)
         m_assign.addAction(act_fix)
 
         act_load = QAction("Cargas nodales...", self)
@@ -398,6 +404,32 @@ class MainWindow(QMainWindow):
                     f"Transformación {tag} editada: {edited.transf_type.value}"
                 )
 
+        elif category == "nodes":
+            node = self._model.nodes.get(tag)
+            if not node:
+                return
+            dlg = NodeDialog(self, node=node)
+            if dlg.exec():
+                edited = dlg.get_node()
+                self._model.nodes[tag] = edited
+                self._refresh_all()
+                self._console.log(
+                    f"Nodo {tag} editado: ({edited.x}, {edited.y}, {edited.z})"
+                )
+
+        elif category == "elements":
+            elem = self._model.elements.get(tag)
+            if not elem:
+                return
+            dlg = ElementDialog(self, model=self._model, element=elem)
+            if dlg.exec():
+                edited = dlg.get_element()
+                self._model.elements[tag] = edited
+                self._refresh_all()
+                self._console.log(
+                    f"Elemento {tag} editado: {edited.elem_type.value}"
+                )
+
     def _on_about(self) -> None:
         dlg = AboutDialog(self)
         dlg.exec()
@@ -435,6 +467,50 @@ class MainWindow(QMainWindow):
             self._console.log_success(f"Proyecto guardado: {path}")
         except Exception as exc:
             self._console.log_error(f"Error al guardar: {exc}")
+
+    def _on_draw_node(self) -> None:
+        """Abre el diálogo para crear nodos."""
+        dlg = NodeDialog(
+            self,
+            next_tag=self._model.next_node_tag(),
+        )
+        result = dlg.exec()
+        nodes = dlg.get_created_nodes()
+        if nodes:
+            for node in nodes:
+                self._model.nodes[node.tag] = node
+            self._refresh_all()
+            self._console.log_success(
+                f"{len(nodes)} nodo(s) creado(s): "
+                + ", ".join(str(n.tag) for n in nodes)
+            )
+
+    def _on_draw_element(self) -> None:
+        """Abre el diálogo para crear un elemento."""
+        dlg = ElementDialog(
+            self,
+            model=self._model,
+            next_tag=self._model.next_element_tag(),
+        )
+        if dlg.exec():
+            elem = dlg.get_element()
+            self._model.elements[elem.tag] = elem
+            self._refresh_all()
+            self._console.log_success(
+                f"Elemento creado: {elem.tag} — {elem.elem_type.value} "
+                f"[{elem.node_i}→{elem.node_j}]"
+            )
+
+    def _on_assign_fixity(self) -> None:
+        """Abre el diálogo para asignar restricciones."""
+        if not self._model.nodes:
+            self._console.log_error("No hay nodos en el modelo.")
+            return
+        dlg = FixityDialog(self, model=self._model)
+        dlg.exec()
+        if dlg.was_applied:
+            self._refresh_all()
+            self._console.log_success("Restricciones aplicadas.")
 
     def _on_define_material(self) -> None:
         """Abre el diálogo para crear un nuevo material."""

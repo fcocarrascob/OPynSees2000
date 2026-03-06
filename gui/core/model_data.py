@@ -191,12 +191,26 @@ class Element:
     elem_type: ElementType
     node_i: int
     node_j: int
+    node_k: Optional[int] = None      # Para Shell (4 nodos)
+    node_l: Optional[int] = None      # Para Shell (4 nodos)
     section_tag: Optional[int] = None
     transf_tag: Optional[int] = None
     params: dict = field(default_factory=dict)
 
+    @property
+    def is_shell(self) -> bool:
+        """True si es un elemento de área (Shell)."""
+        return self.elem_type == ElementType.SHELL_MITC4
+
+    @property
+    def node_tags(self) -> tuple[int, ...]:
+        """Retorna todos los tags de nodos del elemento."""
+        if self.is_shell:
+            return (self.node_i, self.node_j, self.node_k or 0, self.node_l or 0)
+        return (self.node_i, self.node_j)
+
     def to_dict(self) -> dict:
-        return {
+        d = {
             "tag": self.tag,
             "elem_type": self.elem_type.value,
             "node_i": self.node_i,
@@ -205,6 +219,11 @@ class Element:
             "transf_tag": self.transf_tag,
             "params": dict(self.params),
         }
+        if self.node_k is not None:
+            d["node_k"] = self.node_k
+        if self.node_l is not None:
+            d["node_l"] = self.node_l
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "Element":
@@ -213,6 +232,8 @@ class Element:
             elem_type=ElementType(d["elem_type"]),
             node_i=d["node_i"],
             node_j=d["node_j"],
+            node_k=d.get("node_k"),
+            node_l=d.get("node_l"),
             section_tag=d.get("section_tag"),
             transf_tag=d.get("transf_tag"),
             params=d.get("params", {}),

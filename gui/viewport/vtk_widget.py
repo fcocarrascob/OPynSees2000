@@ -81,6 +81,7 @@ class VTKViewport(QWidget):
         self._add_floor_grid(model)
         self._add_axes_widget()
         self._add_elements(model)
+        self._add_shells(model)
         self._add_nodes(model)
         self._add_supports(model)
 
@@ -160,6 +161,8 @@ class VTKViewport(QWidget):
         beam_idx = 0
 
         for elem in model.elements.values():
+            if elem.is_shell:
+                continue
             ni = model.nodes.get(elem.node_i)
             nj = model.nodes.get(elem.node_j)
             if ni is None or nj is None:
@@ -211,6 +214,51 @@ class VTKViewport(QWidget):
                 render_lines_as_tubes=True,
                 name="beams",
             )
+
+    # ------------------------------------------------------------------
+    # Shells
+    # ------------------------------------------------------------------
+
+    def _add_shells(self, model: StructuralModel) -> None:
+        """Dibuja elementos shell como superficies cuadriláteras."""
+        shell_points: list[list[float]] = []
+        shell_faces: list[list[int]] = []
+        idx = 0
+
+        for elem in model.elements.values():
+            if not elem.is_shell:
+                continue
+            nodes = []
+            for nt in elem.node_tags:
+                n = model.nodes.get(nt)
+                if n is None:
+                    break
+                nodes.append(n)
+            if len(nodes) != 4:
+                continue
+
+            for n in nodes:
+                shell_points.append([n.x, n.y, n.z])
+            shell_faces.append([4, idx, idx + 1, idx + 2, idx + 3])
+            idx += 4
+
+        if not shell_points:
+            return
+
+        faces = np.hstack(shell_faces)
+        shell_mesh = pv.PolyData(
+            np.array(shell_points, dtype=float),
+            faces=faces,
+        )
+        self.plotter.add_mesh(
+            shell_mesh,
+            color="#80CBC4",        # teal claro
+            opacity=0.5,
+            show_edges=True,
+            edge_color="#00695C",   # teal oscuro
+            line_width=1,
+            name="shells",
+        )
 
     # ------------------------------------------------------------------
     # Nodos
