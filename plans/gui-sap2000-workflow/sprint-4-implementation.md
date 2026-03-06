@@ -15,13 +15,13 @@ Sprint 3 completado y commiteado. Branch `feat/gui-sap2000-workflow`.
 
 #### Step 9: Generador de Script OpenSeesPy
 
-- [ ] Crear `gui/core/script_generator.py`
-- [ ] Crear `gui/dialogs/script_preview_dialog.py`
-- [ ] Modificar `gui/main_window.py` para habilitar Archivo → Exportar script...
+- [x] Crear `gui/core/script_generator.py`
+- [x] Crear `gui/dialogs/script_preview_dialog.py`
+- [x] Modificar `gui/main_window.py` para habilitar Archivo → Exportar script...
 
 ##### 9A. Crear `gui/core/script_generator.py`
 
-- [ ] Crear el archivo con el siguiente contenido completo:
+- [x] Crear el archivo con el siguiente contenido completo:
 
 ```python
 """
@@ -341,7 +341,7 @@ def _element_command(tag: int, elem, model: StructuralModel) -> str:
 
 ##### 9B. Crear `gui/dialogs/script_preview_dialog.py`
 
-- [ ] Crear el archivo con el siguiente contenido completo:
+- [x] Crear el archivo con el siguiente contenido completo:
 
 ```python
 """
@@ -468,13 +468,13 @@ class ScriptPreviewDialog(QDialog):
 
 ##### 9C. Modificar `gui/main_window.py` — Exportar script
 
-- [ ] Agregar import:
+- [x] Agregar import:
 
 ```python
 from gui.dialogs.script_preview_dialog import ScriptPreviewDialog
 ```
 
-- [ ] En `_build_menubar`, en el menú Archivo, agregar antes del separador previo a "Salir":
+- [x] En `_build_menubar`, en el menú Archivo, agregar antes del separador previo a "Salir":
 
 Agregar estas líneas antes de `m_file.addSeparator()` (el que precede a Salir):
 
@@ -488,7 +488,7 @@ Agregar estas líneas antes de `m_file.addSeparator()` (el que precede a Salir):
         m_file.addAction(act_export)
 ```
 
-- [ ] Agregar slot:
+- [x] Agregar slot:
 
 ```python
     def _on_export_script(self) -> None:
@@ -526,15 +526,15 @@ git commit -m "feat: add OpenSeesPy script generator with preview
 
 #### Step 10: Ejecución de Análisis y Resultados
 
-- [ ] Crear `gui/core/analysis_runner.py`
-- [ ] Crear `gui/dialogs/analysis_dialog.py`
-- [ ] Modificar `gui/core/model_data.py` para agregar `AnalysisResult`
-- [ ] Modificar `gui/viewport/vtk_widget.py` para visualizar deformada
-- [ ] Modificar `gui/main_window.py` para habilitar menú Analizar
+- [x] Crear `gui/core/analysis_runner.py`
+- [x] Crear `gui/dialogs/analysis_dialog.py`
+- [x] Modificar `gui/core/model_data.py` para agregar `AnalysisResult`
+- [x] Modificar `gui/viewport/vtk_widget.py` para visualizar deformada
+- [x] Modificar `gui/main_window.py` para habilitar menú Analizar
 
 ##### 10A. Modificar `gui/core/model_data.py` — AnalysisResult
 
-- [ ] Agregar al final del archivo (antes de `StructuralModel`), la siguiente dataclass:
+- [x] Agregar al final del archivo (antes de `StructuralModel`), la siguiente dataclass:
 
 ```python
 @dataclass
@@ -560,7 +560,7 @@ class AnalysisResult:
 
 ##### 10B. Crear `gui/core/analysis_runner.py`
 
-- [ ] Crear el archivo con el siguiente contenido completo:
+- [x] Crear el archivo con el siguiente contenido completo:
 
 ```python
 """
@@ -822,7 +822,7 @@ def _parse_result(data: dict, analysis_type: str) -> AnalysisResult:
 
 ##### 10C. Crear `gui/dialogs/analysis_dialog.py`
 
-- [ ] Crear el archivo con el siguiente contenido completo:
+- [x] Crear el archivo con el siguiente contenido completo:
 
 ```python
 """
@@ -1109,13 +1109,13 @@ class AnalysisDialog(QDialog):
 
 ##### 10D. Modificar `gui/viewport/vtk_widget.py` — Visualizar Deformada
 
-- [ ] Agregar un import de AnalysisResult. Después de los imports existentes, agregar dentro del bloque `if TYPE_CHECKING`:
+- [x] Agregar un import de AnalysisResult. Después de los imports existentes, agregar dentro del bloque `if TYPE_CHECKING`:
 
 ```python
     from gui.core.model_data import AnalysisResult
 ```
 
-- [ ] Agregar método `display_deformed` a la clase `VTKViewport`:
+- [x] Agregar método `display_deformed` a la clase `VTKViewport`:
 
 ```python
     def display_deformed(
@@ -1218,20 +1218,20 @@ class AnalysisDialog(QDialog):
 
 ##### 10E. Modificar `gui/main_window.py` — Habilitar Menú Analizar
 
-- [ ] Agregar imports:
+- [x] Agregar imports:
 
 ```python
 from gui.dialogs.analysis_dialog import AnalysisDialog
 from gui.core.model_data import AnalysisResult
 ```
 
-- [ ] Agregar atributo al `__init__`:
+- [x] Agregar atributo al `__init__`:
 
 ```python
         self._analysis_result: AnalysisResult | None = None
 ```
 
-- [ ] En `_build_menubar`, reemplazar los tres bloques del menú Analizar.
+- [x] En `_build_menubar`, reemplazar los tres bloques del menú Analizar.
 
 Reemplazar:
 ```python
@@ -1265,7 +1265,7 @@ Con:
         m_analyze.addAction(self._act_show_deformed)
 ```
 
-- [ ] Agregar slots de análisis:
+- [x] Agregar slots de análisis:
 
 ```python
     def _on_open_analysis(self) -> None:

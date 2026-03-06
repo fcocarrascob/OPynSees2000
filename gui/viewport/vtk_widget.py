@@ -19,7 +19,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 if TYPE_CHECKING:
-    from gui.core.model_data import StructuralModel
+    from gui.core.model_data import StructuralModel, AnalysisResult
 
 from gui.viewport.picking import find_closest_node, find_closest_element
 
@@ -597,3 +597,100 @@ class VTKViewport(QWidget):
     def close(self) -> None:
         self.plotter.close()
         super().close()
+
+    # ------------------------------------------------------------------
+    # Deformada
+    # ------------------------------------------------------------------
+
+    def display_deformed(
+        self,
+        model: "StructuralModel",
+        result: "AnalysisResult",
+        scale: float = 50.0,
+        mode: int | None = None,
+    ) -> None:
+        """
+        Muestra la deformada del modelo.
+
+        Parameters
+        ----------
+        model : StructuralModel
+        result : AnalysisResult
+        scale : float
+            Factor de amplificación de desplazamientos.
+        mode : int | None
+            Número de modo (para análisis modal). None = estático.
+        """
+        # Obtener desplazamientos según tipo
+        if mode is not None and result.mode_shapes:
+            disps = result.mode_shapes.get(mode, {})
+        else:
+            disps = result.node_displacements
+
+        if not disps:
+            return
+
+        # Construir coordenadas deformadas
+        deformed_points: list[list[float]] = []
+        deformed_lines: list[list[int]] = []
+        idx = 0
+
+        for elem in model.elements.values():
+            ni = model.nodes.get(elem.node_i)
+            nj = model.nodes.get(elem.node_j)
+            if not ni or not nj:
+                continue
+
+            # Desplazamientos
+            di = disps.get(elem.node_i, (0, 0, 0, 0, 0, 0))
+            dj = disps.get(elem.node_j, (0, 0, 0, 0, 0, 0))
+
+            p1 = [ni.x + di[0] * scale, ni.y + di[1] * scale, ni.z + di[2] * scale]
+            p2 = [nj.x + dj[0] * scale, nj.y + dj[1] * scale, nj.z + dj[2] * scale]
+
+            deformed_points.extend([p1, p2])
+            deformed_lines.append([2, idx, idx + 1])
+            idx += 2
+
+        if deformed_points:
+            cells = np.hstack(deformed_lines)
+            mesh = pv.PolyData(
+                np.array(deformed_points, dtype=float),
+                lines=cells,
+            )
+            self.plotter.add_mesh(
+                mesh,
+                color="#FF6F00",   # ámbar oscuro
+                line_width=3,
+                render_lines_as_tubes=True,
+                opacity=0.9,
+                name="deformed",
+            )
+
+        # Esferas en nodos deformados
+        node_pts = []
+        for tag, node in model.nodes.items():
+            d = disps.get(tag, (0, 0, 0))
+            node_pts.append([
+                node.x + d[0] * scale,
+                node.y + d[1] * scale,
+                node.z + d[2] * scale,
+            ])
+        if node_pts:
+            cloud = pv.PolyData(np.array(node_pts, dtype=float))
+            glyphs = cloud.glyph(
+                geom=pv.Sphere(radius=0.08),
+                orient=False,
+                scale=False,
+            )
+            self.plotter.add_mesh(
+                glyphs,
+                color="#FF6F00",
+                opacity=0.8,
+                name="deformed_nodes",
+            )
+
+    def clear_deformed(self) -> None:
+        """Elimina la visualización de deformada."""
+        self.plotter.remove_actor("deformed", render=False)
+        self.plotter.remove_actor("deformed_nodes", render=False)

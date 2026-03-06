@@ -47,6 +47,9 @@ from gui.dialogs.node_dialog import NodeDialog
 from gui.dialogs.nodal_load_dialog import NodalLoadDialog
 from gui.dialogs.section_dialog import SectionDialog
 from gui.dialogs.transf_dialog import TransfDialog
+from gui.dialogs.script_preview_dialog import ScriptPreviewDialog
+from gui.dialogs.analysis_dialog import AnalysisDialog
+from gui.core.model_data import AnalysisResult
 
 
 THEME_PATH = Path(__file__).parent / "theme" / "light.qss"
@@ -64,6 +67,7 @@ class MainWindow(QMainWindow):
         # Modelo de datos
         self._model = StructuralModel.create_demo()
         self._current_file: Path | None = None
+        self._analysis_result: AnalysisResult | None = None
 
         # Widgets
         self._tree = ModelTree()
@@ -148,6 +152,14 @@ class MainWindow(QMainWindow):
 
         m_file.addSeparator()
 
+        act_export = QAction("Exportar script OpenSeesPy...", self)
+        act_export.setShortcut(QKeySequence("Ctrl+E"))
+        act_export.setToolTip("Generar y previsualizar script OpenSeesPy")
+        act_export.triggered.connect(self._on_export_script)
+        m_file.addAction(act_export)
+
+        m_file.addSeparator()
+
         act_exit = QAction("Salir", self)
         act_exit.setShortcut(QKeySequence("Ctrl+Q"))
         act_exit.triggered.connect(self.close)
@@ -209,18 +221,19 @@ class MainWindow(QMainWindow):
         # --- Analizar ---
         m_analyze = mb.addMenu("A&nalizar")
 
-        act_static = QAction("Análisis estático...", self)
-        act_static.setEnabled(False)
-        m_analyze.addAction(act_static)
+        act_analysis = QAction("Configurar y ejecutar...", self)
+        act_analysis.setShortcut(QKeySequence("F5"))
+        act_analysis.setToolTip("Abrir diálogo de análisis (F5)")
+        act_analysis.triggered.connect(self._on_open_analysis)
+        m_analyze.addAction(act_analysis)
 
-        act_modal = QAction("Análisis modal...", self)
-        act_modal.setEnabled(False)
-        m_analyze.addAction(act_modal)
+        m_analyze.addSeparator()
 
-        act_run = QAction("Ejecutar análisis", self)
-        act_run.setShortcut(QKeySequence("F5"))
-        act_run.setEnabled(False)
-        m_analyze.addAction(act_run)
+        self._act_show_deformed = QAction("Mostrar deformada", self)
+        self._act_show_deformed.setCheckable(True)
+        self._act_show_deformed.setEnabled(False)
+        self._act_show_deformed.toggled.connect(self._on_toggle_deformed)
+        m_analyze.addAction(self._act_show_deformed)
 
         # --- Mostrar ---
         m_display = mb.addMenu("M&ostrar")
@@ -599,6 +612,50 @@ class MainWindow(QMainWindow):
             self._console.log_success(
                 f"Patrón de carga creado: {pat.tag} — {pat.name}"
             )
+
+    def _on_export_script(self) -> None:
+        """Abre el diálogo de previsualización del script."""
+        dlg = ScriptPreviewDialog(self, model=self._model)
+        dlg.exec()
+
+    def _on_open_analysis(self) -> None:
+        """Abre el diálogo de análisis."""
+        if not self._model.nodes:
+            self._console.log_error("El modelo está vacío.")
+            return
+        dlg = AnalysisDialog(self, model=self._model)
+        dlg.analysis_complete.connect(self._on_analysis_result)
+        dlg.exec()
+
+    def _on_analysis_result(self, result: AnalysisResult) -> None:
+        """Callback cuando hay resultados de análisis."""
+        self._analysis_result = result
+        self._act_show_deformed.setEnabled(True)
+        self._act_show_deformed.setChecked(True)
+
+        if result.analysis_type == "static":
+            n_disp = len(result.node_displacements)
+            self._console.log_success(
+                f"Análisis estático completado: {n_disp} nodos con desplazamientos."
+            )
+        elif result.analysis_type == "modal":
+            self._console.log_success(
+                f"Análisis modal completado: {result.n_modes} modos."
+            )
+            if result.periods:
+                T1 = result.periods[0]
+                self._console.log(f"  Período fundamental T₁ = {T1:.4f} s")
+
+    def _on_toggle_deformed(self, checked: bool) -> None:
+        """Toggle de visualización de deformada."""
+        if checked and self._analysis_result:
+            self._viewport.display_model(self._model)
+            self._viewport.display_deformed(self._model, self._analysis_result)
+            self._console.log("Deformada mostrada (escala 50x).")
+        else:
+            self._viewport.clear_deformed()
+            self._viewport.display_model(self._model)
+            self._console.log("Deformada ocultada.")
 
     def _on_assign_nodal_loads(self) -> None:
         """Abre el diálogo para asignar cargas nodales."""

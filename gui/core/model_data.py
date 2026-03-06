@@ -294,6 +294,31 @@ class LoadPattern:
 
 
 # ---------------------------------------------------------------------------
+# Resultado de análisis
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AnalysisResult:
+    """Resultado de un análisis."""
+    analysis_type: str  # "static" o "modal"
+
+    # Estático
+    node_displacements: dict[int, tuple[float, ...]] = field(default_factory=dict)
+    node_reactions: dict[int, tuple[float, ...]] = field(default_factory=dict)
+
+    # Modal
+    eigenvalues: list[float] = field(default_factory=list)
+    periods: list[float] = field(default_factory=list)
+    frequencies: list[float] = field(default_factory=list)
+    mode_shapes: dict[int, dict[int, tuple[float, ...]]] = field(default_factory=dict)
+    # mode_shapes[mode_num][node_tag] = (dx, dy, dz, rx, ry, rz)
+
+    @property
+    def n_modes(self) -> int:
+        return len(self.eigenvalues)
+
+
+# ---------------------------------------------------------------------------
 # Contenedor principal del modelo
 # ---------------------------------------------------------------------------
 
