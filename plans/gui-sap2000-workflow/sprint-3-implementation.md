@@ -14,13 +14,13 @@ Sprint 2 completado y commiteado. Branch `feat/gui-sap2000-workflow`.
 
 #### Step 7: Patrones de Carga y Cargas Nodales
 
-- [ ] Crear `gui/dialogs/load_pattern_dialog.py`
-- [ ] Crear `gui/dialogs/nodal_load_dialog.py`
-- [ ] Modificar `gui/main_window.py` para habilitar Definir → Patrones de carga... y Asignar → Cargas nodales...
+- [x] Crear `gui/dialogs/load_pattern_dialog.py`
+- [x] Crear `gui/dialogs/nodal_load_dialog.py`
+- [x] Modificar `gui/main_window.py` para habilitar Definir → Patrones de carga... y Asignar → Cargas nodales...
 
 ##### 7A. Crear `gui/dialogs/load_pattern_dialog.py`
 
-- [ ] Crear el archivo con el siguiente contenido completo:
+- [x] Crear el archivo con el siguiente contenido completo:
 
 ```python
 """
@@ -115,7 +115,7 @@ class LoadPatternDialog(QDialog):
 
 ##### 7B. Crear `gui/dialogs/nodal_load_dialog.py`
 
-- [ ] Crear el archivo con el siguiente contenido completo:
+- [x] Crear el archivo con el siguiente contenido completo:
 
 ```python
 """
@@ -333,14 +333,14 @@ class NodalLoadDialog(QDialog):
 
 ##### 7C. Modificar `gui/main_window.py` — Habilitar Patrones y Cargas
 
-- [ ] Agregar imports:
+- [x] Agregar imports:
 
 ```python
 from gui.dialogs.load_pattern_dialog import LoadPatternDialog
 from gui.dialogs.nodal_load_dialog import NodalLoadDialog
 ```
 
-- [ ] En `_build_menubar`, reemplazar el bloque de Patrones de carga.
+- [x] En `_build_menubar`, reemplazar el bloque de Patrones de carga.
 
 Reemplazar:
 ```python
@@ -356,7 +356,7 @@ Con:
         m_define.addAction(act_pattern)
 ```
 
-- [ ] En `_build_menubar`, reemplazar el bloque de Cargas nodales.
+- [x] En `_build_menubar`, reemplazar el bloque de Cargas nodales.
 
 Reemplazar:
 ```python
@@ -372,7 +372,7 @@ Con:
         m_assign.addAction(act_load)
 ```
 
-- [ ] Agregar slots:
+- [x] Agregar slots:
 
 ```python
     def _on_define_pattern(self) -> None:
@@ -406,7 +406,7 @@ Con:
             self._console.log_success("Cargas nodales asignadas.")
 ```
 
-- [ ] Expandir `_on_tree_item_double_clicked` para soportar patrones de carga:
+- [x] Expandir `_on_tree_item_double_clicked` para soportar patrones de carga:
 
 Agregar al final del método:
 ```python
@@ -449,13 +449,13 @@ git commit -m "feat: add load patterns and nodal load assignment
 
 #### Step 8: Viewport Mejorado — Etiquetas, Selección, Cargas
 
-- [ ] Crear `gui/viewport/picking.py` — lógica de selección interactiva
-- [ ] Refactorizar `gui/viewport/vtk_widget.py` — etiquetas, flechas de carga, picking
-- [ ] Modificar `gui/main_window.py` — botones toggle en toolbar + conexiones
+- [x] Crear `gui/viewport/picking.py` — lógica de selección interactiva
+- [x] Refactorizar `gui/viewport/vtk_widget.py` — etiquetas, flechas de carga, picking
+- [x] Modificar `gui/main_window.py` — botones toggle en toolbar + conexiones
 
 ##### 8A. Crear `gui/viewport/picking.py`
 
-- [ ] Crear el archivo con el siguiente contenido completo:
+- [x] Crear el archivo con el siguiente contenido completo:
 
 ```python
 """
@@ -546,14 +546,14 @@ def find_closest_element(
 
 La refactorización agrega tres capacidades toggleables al viewport existente. Se modifica el archivo existente con las siguientes adiciones:
 
-- [ ] Agregar imports al inicio del archivo. Después de los imports existentes, agregar:
+- [x] Agregar imports al inicio del archivo. Después de los imports existentes, agregar:
 
 ```python
 from PySide6.QtCore import Signal
 from gui.viewport.picking import find_closest_node, find_closest_element
 ```
 
-- [ ] Agregar colores nuevos al bloque de constantes:
+- [x] Agregar colores nuevos al bloque de constantes:
 
 ```python
 COLOR_LOAD_FORCE = "#D32F2F"      # rojo — fuerzas
@@ -562,14 +562,14 @@ COLOR_HIGHLIGHT = "#FFD600"       # amarillo — selección
 COLOR_LABEL = "#212121"           # negro/gris oscuro
 ```
 
-- [ ] En la clase `VTKViewport`, agregar señal y atributos de estado. Agregar inmediatamente después de la declaración de clase:
+- [x] En la clase `VTKViewport`, agregar señal y atributos de estado. Agregar inmediatamente después de la declaración de clase:
 
 ```python
     # Señal emitida al hacer clic en un nodo/elemento: (category, tag)
     item_picked = Signal(str, int)
 ```
 
-- [ ] En `__init__`, agregar flags de toggle después de `self._setup_renderer()`:
+- [x] En `__init__`, agregar flags de toggle después de `self._setup_renderer()`:
 
 ```python
         # Estado de toggles
@@ -579,7 +579,7 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
         self._selected_category: str | None = None
 ```
 
-- [ ] Agregar método toggle de etiquetas:
+- [x] Agregar método toggle de etiquetas:
 
 ```python
     def toggle_labels(self, show: bool) -> None:
@@ -587,7 +587,7 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
         self._show_labels = show
 ```
 
-- [ ] Agregar método toggle de cargas:
+- [x] Agregar método toggle de cargas:
 
 ```python
     def toggle_loads(self, show: bool) -> None:
@@ -595,7 +595,7 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
         self._show_loads = show
 ```
 
-- [ ] En `display_model`, agregar llamadas condicionales. Después de `self._add_supports(model)`, añadir:
+- [x] En `display_model`, agregar llamadas condicionales. Después de `self._add_supports(model)`, añadir:
 
 ```python
         if self._show_labels:
@@ -605,7 +605,7 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
             self._add_load_arrows(model)
 ```
 
-- [ ] Agregar método `_add_node_labels`:
+- [x] Agregar método `_add_node_labels`:
 
 ```python
     def _add_node_labels(self, model: StructuralModel) -> None:
@@ -635,7 +635,7 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
         )
 ```
 
-- [ ] Agregar método `_add_element_labels`:
+- [x] Agregar método `_add_element_labels`:
 
 ```python
     def _add_element_labels(self, model: StructuralModel) -> None:
@@ -671,7 +671,7 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
         )
 ```
 
-- [ ] Agregar método `_add_load_arrows`:
+- [x] Agregar método `_add_load_arrows`:
 
 ```python
     def _add_load_arrows(self, model: StructuralModel) -> None:
@@ -763,7 +763,7 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
             )
 ```
 
-- [ ] Agregar método `highlight_node` para selección:
+- [x] Agregar método `highlight_node` para selección:
 
 ```python
     def highlight_node(self, model: StructuralModel, tag: int) -> None:
@@ -781,7 +781,7 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
         )
 ```
 
-- [ ] Agregar método `highlight_element` para selección:
+- [x] Agregar método `highlight_element` para selección:
 
 ```python
     def highlight_element(self, model: StructuralModel, tag: int) -> None:
@@ -807,7 +807,7 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
         )
 ```
 
-- [ ] Agregar método `clear_highlight`:
+- [x] Agregar método `clear_highlight`:
 
 ```python
     def clear_highlight(self) -> None:
@@ -815,7 +815,7 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
         self.plotter.remove_actor("highlight", render=False)
 ```
 
-- [ ] Agregar método `enable_picking` que registra el callback de clic:
+- [x] Agregar método `enable_picking` que registra el callback de clic:
 
 ```python
     def enable_picking(self, model: StructuralModel) -> None:
@@ -849,7 +849,7 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
 
 ##### 8C. Modificar `gui/main_window.py` — Toggle buttons + Picking
 
-- [ ] En `_build_toolbar`, agregar botones toggle después del separador final. Añadir antes del cierre del método:
+- [x] En `_build_toolbar`, agregar botones toggle después del separador final. Añadir antes del cierre del método:
 
 ```python
         tb.addSeparator()
@@ -869,7 +869,7 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
         tb.addAction(self._act_loads)
 ```
 
-- [ ] Agregar los toggle slots:
+- [x] Agregar los toggle slots:
 
 ```python
     def _on_toggle_labels(self, checked: bool) -> None:
@@ -887,19 +887,19 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
         self._console.log(f"Flechas de carga {state}.")
 ```
 
-- [ ] Conectar picking. En `_refresh_all`, después de `self._viewport.display_model(self._model)`, agregar:
+- [x] Conectar picking. En `_refresh_all`, después de `self._viewport.display_model(self._model)`, agregar:
 
 ```python
         self._viewport.enable_picking(self._model)
 ```
 
-- [ ] Conectar la señal de picking. En `__init__`, después de la conexión de `item_selected`, agregar:
+- [x] Conectar la señal de picking. En `__init__`, después de la conexión de `item_selected`, agregar:
 
 ```python
         self._viewport.item_picked.connect(self._on_viewport_pick)
 ```
 
-- [ ] Agregar slot de picking:
+- [x] Agregar slot de picking:
 
 ```python
     def _on_viewport_pick(self, category: str, tag: int) -> None:

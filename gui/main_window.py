@@ -41,8 +41,10 @@ from gui.viewport.vtk_widget import VTKViewport
 from gui.core.project_io import save_project, load_project, FILE_FILTER
 from gui.dialogs.element_dialog import ElementDialog
 from gui.dialogs.fixity_dialog import FixityDialog
+from gui.dialogs.load_pattern_dialog import LoadPatternDialog
 from gui.dialogs.material_dialog import MaterialDialog
 from gui.dialogs.node_dialog import NodeDialog
+from gui.dialogs.nodal_load_dialog import NodalLoadDialog
 from gui.dialogs.section_dialog import SectionDialog
 from gui.dialogs.transf_dialog import TransfDialog
 
@@ -78,6 +80,7 @@ class MainWindow(QMainWindow):
         # Conexiones
         self._tree.item_selected.connect(self._on_tree_item_selected)
         self._tree.itemDoubleClicked.connect(self._on_tree_item_double_clicked)
+        self._viewport.item_picked.connect(self._on_viewport_pick)
 
         # Carga inicial
         self._refresh_all()
@@ -169,7 +172,8 @@ class MainWindow(QMainWindow):
         m_define.addAction(act_transf)
 
         act_pattern = QAction("Patrones de carga...", self)
-        act_pattern.setEnabled(False)
+        act_pattern.setToolTip("Definir patrones de carga (TimeSeries)")
+        act_pattern.triggered.connect(self._on_define_pattern)
         m_define.addAction(act_pattern)
 
         # --- Dibujar ---
@@ -194,7 +198,8 @@ class MainWindow(QMainWindow):
         m_assign.addAction(act_fix)
 
         act_load = QAction("Cargas nodales...", self)
-        act_load.setEnabled(False)
+        act_load.setToolTip("Asignar fuerzas y momentos a nodos")
+        act_load.triggered.connect(self._on_assign_nodal_loads)
         m_assign.addAction(act_load)
 
         act_mass = QAction("Masas...", self)
@@ -321,6 +326,22 @@ class MainWindow(QMainWindow):
         act_refresh.triggered.connect(self._refresh_viewport)
         tb.addAction(act_refresh)
 
+        tb.addSeparator()
+
+        self._act_labels = QAction("Etiquetas", self)
+        self._act_labels.setToolTip("Mostrar/ocultar etiquetas de nodos y elementos")
+        self._act_labels.setCheckable(True)
+        self._act_labels.setChecked(False)
+        self._act_labels.toggled.connect(self._on_toggle_labels)
+        tb.addAction(self._act_labels)
+
+        self._act_loads = QAction("Cargas", self)
+        self._act_loads.setToolTip("Mostrar/ocultar flechas de carga")
+        self._act_loads.setCheckable(True)
+        self._act_loads.setChecked(False)
+        self._act_loads.toggled.connect(self._on_toggle_loads)
+        tb.addAction(self._act_loads)
+
     # ------------------------------------------------------------------
     # Status bar
     # ------------------------------------------------------------------
@@ -429,6 +450,17 @@ class MainWindow(QMainWindow):
                 self._console.log(
                     f"Elemento {tag} editado: {edited.elem_type.value}"
                 )
+
+        elif category == "load_patterns":
+            pat = self._model.load_patterns.get(tag)
+            if not pat:
+                return
+            dlg = LoadPatternDialog(self, pattern=pat)
+            if dlg.exec():
+                edited = dlg.get_pattern()
+                self._model.load_patterns[tag] = edited
+                self._refresh_all()
+                self._console.log(f"Patrón {tag} editado: {edited.name}")
 
     def _on_about(self) -> None:
         dlg = AboutDialog(self)
@@ -554,6 +586,36 @@ class MainWindow(QMainWindow):
                 f"Transformación creada: {transf.tag} — {transf.transf_type.value}"
             )
 
+    def _on_define_pattern(self) -> None:
+        """Abre el diálogo para crear un patrón de carga."""
+        dlg = LoadPatternDialog(
+            self,
+            next_tag=self._model.next_pattern_tag(),
+        )
+        if dlg.exec():
+            pat = dlg.get_pattern()
+            self._model.load_patterns[pat.tag] = pat
+            self._refresh_all()
+            self._console.log_success(
+                f"Patrón de carga creado: {pat.tag} — {pat.name}"
+            )
+
+    def _on_assign_nodal_loads(self) -> None:
+        """Abre el diálogo para asignar cargas nodales."""
+        if not self._model.load_patterns:
+            self._console.log_error(
+                "Primero debe crear un patrón de carga (Definir → Patrones de carga...)."
+            )
+            return
+        if not self._model.nodes:
+            self._console.log_error("No hay nodos en el modelo.")
+            return
+        dlg = NodalLoadDialog(self, model=self._model)
+        dlg.exec()
+        if dlg.was_applied:
+            self._refresh_all()
+            self._console.log_success("Cargas nodales asignadas.")
+
     def _update_title(self) -> None:
         """Actualiza el título de la ventana con el nombre del archivo."""
         base = "OPynSees2000 — OpenSeesPy GUI"
@@ -565,11 +627,31 @@ class MainWindow(QMainWindow):
         """Refresca tree, viewport y statusbar."""
         self._tree.refresh(self._model)
         self._viewport.display_model(self._model)
+        self._viewport.enable_picking(self._model)
         self._update_statusbar()
 
     def _refresh_viewport(self) -> None:
         self._viewport.display_model(self._model)
         self._console.log("Viewport refrescado.")
+
+    def _on_toggle_labels(self, checked: bool) -> None:
+        """Toggle de etiquetas de nodos/elementos."""
+        self._viewport.toggle_labels(checked)
+        self._viewport.display_model(self._model)
+        state = "activadas" if checked else "desactivadas"
+        self._console.log(f"Etiquetas {state}.")
+
+    def _on_toggle_loads(self, checked: bool) -> None:
+        """Toggle de visualización de cargas."""
+        self._viewport.toggle_loads(checked)
+        self._viewport.display_model(self._model)
+        state = "activadas" if checked else "desactivadas"
+        self._console.log(f"Flechas de carga {state}.")
+
+    def _on_viewport_pick(self, category: str, tag: int) -> None:
+        """Maneja la selección de un objeto en el viewport."""
+        self._properties.show_item(self._model, category, tag)
+        self._console.log(f"Seleccionado: {category} → tag {tag}")
 
     # ------------------------------------------------------------------
     # Override close

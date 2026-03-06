@@ -15,10 +15,13 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pyvista as pv
 from pyvistaqt import QtInteractor
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 if TYPE_CHECKING:
     from gui.core.model_data import StructuralModel
+
+from gui.viewport.picking import find_closest_node, find_closest_element
 
 
 # ---------------------------------------------------------------------------
@@ -33,10 +36,17 @@ COLOR_GRID = "#E0E0E0"        # gris claro
 COLOR_AXIS_X = "#D32F2F"
 COLOR_AXIS_Y = "#388E3C"
 COLOR_AXIS_Z = "#1976D2"
+COLOR_LOAD_FORCE = "#D32F2F"      # rojo — fuerzas
+COLOR_LOAD_MOMENT = "#7B1FA2"     # morado — momentos
+COLOR_HIGHLIGHT = "#FFD600"       # amarillo — selección
+COLOR_LABEL = "#212121"           # negro/gris oscuro
 
 
 class VTKViewport(QWidget):
     """Widget con el viewport 3D de PyVista."""
+
+    # Señal emitida al hacer clic en un nodo/elemento: (category, tag)
+    item_picked = Signal(str, int)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -50,6 +60,12 @@ class VTKViewport(QWidget):
 
         # Configuración base del renderer
         self._setup_renderer()
+
+        # Estado de toggles
+        self._show_labels = False
+        self._show_loads = False
+        self._selected_tag: int | None = None
+        self._selected_category: str | None = None
 
     # ------------------------------------------------------------------
     # Setup
@@ -84,6 +100,12 @@ class VTKViewport(QWidget):
         self._add_shells(model)
         self._add_nodes(model)
         self._add_supports(model)
+
+        if self._show_labels:
+            self._add_node_labels(model)
+            self._add_element_labels(model)
+        if self._show_loads:
+            self._add_load_arrows(model)
 
         self.plotter.reset_camera()
         self.plotter.camera_position = "iso"
@@ -337,6 +359,240 @@ class VTKViewport(QWidget):
 
     def set_view_yz(self) -> None:
         self.plotter.view_yz()
+
+    def toggle_labels(self, show: bool) -> None:
+        """Activa/desactiva etiquetas de nodos y elementos."""
+        self._show_labels = show
+
+    def toggle_loads(self, show: bool) -> None:
+        """Activa/desactiva visualización de flechas de carga."""
+        self._show_loads = show
+
+    # ------------------------------------------------------------------
+    # Etiquetas
+    # ------------------------------------------------------------------
+
+    def _add_node_labels(self, model: StructuralModel) -> None:
+        """Muestra etiquetas numéricas en cada nodo."""
+        if not model.nodes:
+            return
+
+        points = []
+        labels = []
+        for tag, node in model.nodes.items():
+            points.append([node.x, node.y, node.z])
+            labels.append(str(tag))
+
+        cloud = pv.PolyData(np.array(points, dtype=float))
+        cloud["labels"] = labels
+
+        self.plotter.add_point_labels(
+            cloud,
+            "labels",
+            font_size=10,
+            text_color=COLOR_LABEL,
+            point_size=0,
+            shape=None,
+            render_points_as_spheres=False,
+            always_visible=True,
+            name="node_labels",
+        )
+
+    def _add_element_labels(self, model: StructuralModel) -> None:
+        """Muestra etiquetas numéricas en el punto medio de cada elemento."""
+        points = []
+        labels = []
+
+        for tag, elem in model.elements.items():
+            ni = model.nodes.get(elem.node_i)
+            nj = model.nodes.get(elem.node_j)
+            if ni is None or nj is None:
+                continue
+            mid = [(ni.x + nj.x) / 2, (ni.y + nj.y) / 2, (ni.z + nj.z) / 2]
+            points.append(mid)
+            labels.append(str(tag))
+
+        if not points:
+            return
+
+        cloud = pv.PolyData(np.array(points, dtype=float))
+        cloud["labels"] = labels
+
+        self.plotter.add_point_labels(
+            cloud,
+            "labels",
+            font_size=9,
+            text_color="#1565C0",
+            point_size=0,
+            shape=None,
+            render_points_as_spheres=False,
+            always_visible=True,
+            name="element_labels",
+        )
+
+    # ------------------------------------------------------------------
+    # Flechas de carga
+    # ------------------------------------------------------------------
+
+    def _add_load_arrows(self, model: StructuralModel) -> None:
+        """Dibuja flechas 3D representando las cargas nodales."""
+        force_origins: list[list[float]] = []
+        force_dirs: list[list[float]] = []
+        moment_origins: list[list[float]] = []
+        moment_dirs: list[list[float]] = []
+
+        # Recopilar todas las cargas de todos los patrones
+        for pattern in model.load_patterns.values():
+            for load in pattern.loads:
+                node = model.nodes.get(load.node_tag)
+                if node is None:
+                    continue
+                origin = [node.x, node.y, node.z]
+
+                # Fuerzas
+                for comp, axis in [(load.fx, [1, 0, 0]),
+                                   (load.fy, [0, 1, 0]),
+                                   (load.fz, [0, 0, 1])]:
+                    if abs(comp) > 1e-6:
+                        sign = 1.0 if comp > 0 else -1.0
+                        force_origins.append(origin)
+                        force_dirs.append([a * sign for a in axis])
+
+                # Momentos
+                for comp, axis in [(load.mx, [1, 0, 0]),
+                                   (load.my, [0, 1, 0]),
+                                   (load.mz, [0, 0, 1])]:
+                    if abs(comp) > 1e-6:
+                        sign = 1.0 if comp > 0 else -1.0
+                        moment_origins.append(origin)
+                        moment_dirs.append([a * sign for a in axis])
+
+        # Escala de flechas (longitud fija para visibilidad)
+        arrow_scale = 0.8
+
+        # Dibujar flechas de fuerzas
+        if force_origins:
+            origins = np.array(force_origins, dtype=float)
+            dirs = np.array(force_dirs, dtype=float)
+            arrows = pv.PolyData(origins)
+            arrows["vectors"] = dirs * arrow_scale
+            arrows.set_active_vectors("vectors")
+            glyphs = arrows.glyph(
+                orient="vectors",
+                scale=False,
+                factor=arrow_scale,
+                geom=pv.Arrow(
+                    start=(0, 0, 0),
+                    direction=(1, 0, 0),
+                    tip_length=0.3,
+                    tip_radius=0.1,
+                    shaft_radius=0.03,
+                    shaft_resolution=12,
+                ),
+            )
+            self.plotter.add_mesh(
+                glyphs,
+                color=COLOR_LOAD_FORCE,
+                name="load_force_arrows",
+            )
+
+        # Dibujar flechas de momentos (más delgadas, color distinto)
+        if moment_origins:
+            origins = np.array(moment_origins, dtype=float)
+            dirs = np.array(moment_dirs, dtype=float)
+            arrows = pv.PolyData(origins)
+            arrows["vectors"] = dirs * arrow_scale * 0.7
+            arrows.set_active_vectors("vectors")
+            glyphs = arrows.glyph(
+                orient="vectors",
+                scale=False,
+                factor=arrow_scale * 0.7,
+                geom=pv.Arrow(
+                    start=(0, 0, 0),
+                    direction=(1, 0, 0),
+                    tip_length=0.35,
+                    tip_radius=0.08,
+                    shaft_radius=0.02,
+                    shaft_resolution=12,
+                ),
+            )
+            self.plotter.add_mesh(
+                glyphs,
+                color=COLOR_LOAD_MOMENT,
+                name="load_moment_arrows",
+            )
+
+    # ------------------------------------------------------------------
+    # Highlight y Picking
+    # ------------------------------------------------------------------
+
+    def highlight_node(self, model: StructuralModel, tag: int) -> None:
+        """Resalta un nodo con color amarillo."""
+        self.plotter.remove_actor("highlight", render=False)
+        node = model.nodes.get(tag)
+        if not node:
+            return
+        sphere = pv.Sphere(radius=0.2, center=(node.x, node.y, node.z))
+        self.plotter.add_mesh(
+            sphere,
+            color=COLOR_HIGHLIGHT,
+            opacity=0.8,
+            name="highlight",
+        )
+
+    def highlight_element(self, model: StructuralModel, tag: int) -> None:
+        """Resalta un elemento con color amarillo."""
+        self.plotter.remove_actor("highlight", render=False)
+        elem = model.elements.get(tag)
+        if not elem:
+            return
+        ni = model.nodes.get(elem.node_i)
+        nj = model.nodes.get(elem.node_j)
+        if not ni or not nj:
+            return
+        line = pv.Line(
+            pointa=(ni.x, ni.y, ni.z),
+            pointb=(nj.x, nj.y, nj.z),
+        )
+        self.plotter.add_mesh(
+            line,
+            color=COLOR_HIGHLIGHT,
+            line_width=8,
+            render_lines_as_tubes=True,
+            name="highlight",
+        )
+
+    def clear_highlight(self) -> None:
+        """Elimina cualquier resaltado activo."""
+        self.plotter.remove_actor("highlight", render=False)
+
+    def enable_picking(self, model: StructuralModel) -> None:
+        """Habilita picking interactivo en el viewport."""
+        self._pick_model = model
+
+        def _on_pick(point):
+            if point is None:
+                return
+            p = (point[0], point[1], point[2])
+            # Primero intentar nodo, luego elemento
+            node_tag = find_closest_node(self._pick_model, p, tolerance=0.5)
+            if node_tag is not None:
+                self.highlight_node(self._pick_model, node_tag)
+                self.item_picked.emit("nodes", node_tag)
+                return
+            elem_tag = find_closest_element(self._pick_model, p, tolerance=0.5)
+            if elem_tag is not None:
+                self.highlight_element(self._pick_model, elem_tag)
+                self.item_picked.emit("elements", elem_tag)
+
+        self.plotter.enable_point_picking(
+            callback=_on_pick,
+            show_message=False,
+            show_point=False,
+            use_picker=True,
+            picker="cell",
+            tolerance=0.025,
+        )
 
     def close(self) -> None:
         self.plotter.close()
