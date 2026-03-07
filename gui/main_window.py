@@ -176,12 +176,14 @@ class MainWindow(QMainWindow):
 
         self._act_undo = QAction("Deshacer", self)
         self._act_undo.setShortcut(QKeySequence.StandardKey.Undo)
+        self._act_undo.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
         self._act_undo.setEnabled(False)
         self._act_undo.triggered.connect(self._on_undo)
         m_edit.addAction(self._act_undo)
 
         self._act_redo = QAction("Rehacer", self)
         self._act_redo.setShortcut(QKeySequence.StandardKey.Redo)
+        self._act_redo.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
         self._act_redo.setEnabled(False)
         self._act_redo.triggered.connect(self._on_redo)
         m_edit.addAction(self._act_redo)

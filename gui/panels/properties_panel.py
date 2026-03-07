@@ -185,7 +185,6 @@ class PropertiesPanel(QScrollArea):
             spin.setDecimals(6)
             spin.setRange(-1e15, 1e15)
             spin.setValue(value)
-            spin.lineEdit().setUndoRedoEnabled(False)
             spin.editingFinished.connect(
                 lambda fn=field_name, s=spin: self._on_field_edited(
                     item, fn, s.value()
@@ -198,7 +197,6 @@ class PropertiesPanel(QScrollArea):
             spin.setDecimals(0)
             spin.setRange(-999_999, 999_999)
             spin.setValue(value)
-            spin.lineEdit().setUndoRedoEnabled(False)
             spin.editingFinished.connect(
                 lambda fn=field_name, s=spin: self._on_field_edited(
                     item, fn, int(s.value())
@@ -208,7 +206,6 @@ class PropertiesPanel(QScrollArea):
 
         if isinstance(value, str):
             edit = QLineEdit(value)
-            edit.setUndoRedoEnabled(False)
             edit.editingFinished.connect(
                 lambda fn=field_name, e=edit: self._on_field_edited(
                     item, fn, e.text()
@@ -231,7 +228,6 @@ class PropertiesPanel(QScrollArea):
             spin.setDecimals(6)
             spin.setRange(-1e15, 1e15)
             spin.setValue(float(value))
-            spin.lineEdit().setUndoRedoEnabled(False)
             spin.editingFinished.connect(
                 lambda k=key, s=spin: self._on_param_edited(
                     item, k, s.value()
