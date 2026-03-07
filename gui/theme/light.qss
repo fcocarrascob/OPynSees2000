@@ -1,0 +1,322 @@
+/* ==========================================================
+   OPynSees2000 — Tema Claro Minimalista
+   ========================================================== */
+
+/* --- Paleta ---
+   Fondo principal:    #FAFAFA
+   Fondo paneles:      #FFFFFF
+   Borde suave:        #E0E0E0
+   Texto principal:    #212121
+   Texto secundario:   #757575
+   Acento primario:    #1976D2
+   Acento hover:       #1565C0
+   Selección fondo:    #E3F2FD
+   Peligro/empotrado:  #388E3C
+   Nodo:               #D32F2F
+*/
+
+* {
+    font-family: "Segoe UI", "Roboto", sans-serif;
+    font-size: 13px;
+    color: #212121;
+}
+
+QMainWindow {
+    background-color: #FAFAFA;
+}
+
+/* --- Menú bar --- */
+QMenuBar {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid #E0E0E0;
+    padding: 2px 0;
+}
+
+QMenuBar::item {
+    padding: 6px 12px;
+    background: transparent;
+    border-radius: 4px;
+}
+
+QMenuBar::item:selected {
+    background-color: #E3F2FD;
+    color: #1976D2;
+}
+
+QMenu {
+    background-color: #FFFFFF;
+    border: 1px solid #E0E0E0;
+    border-radius: 6px;
+    padding: 4px 0;
+}
+
+QMenu::item {
+    padding: 6px 28px 6px 12px;
+}
+
+QMenu::item:selected {
+    background-color: #E3F2FD;
+    color: #1976D2;
+}
+
+QMenu::separator {
+    height: 1px;
+    background: #E0E0E0;
+    margin: 4px 8px;
+}
+
+/* --- Toolbar --- */
+QToolBar {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid #E0E0E0;
+    spacing: 4px;
+    padding: 2px 4px;
+}
+
+QToolButton {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: #424242;
+}
+
+QToolButton:hover {
+    background-color: #E3F2FD;
+    border-color: #BBDEFB;
+}
+
+QToolButton:pressed {
+    background-color: #BBDEFB;
+}
+
+/* --- Splitter --- */
+QSplitter::handle {
+    background-color: #E0E0E0;
+}
+
+QSplitter::handle:horizontal {
+    width: 2px;
+}
+
+QSplitter::handle:vertical {
+    height: 2px;
+}
+
+/* --- Tree widget (Model Tree) --- */
+QTreeWidget {
+    background-color: #FFFFFF;
+    border: 1px solid #E0E0E0;
+    border-radius: 6px;
+    outline: none;
+    padding: 4px;
+}
+
+QTreeWidget::item {
+    padding: 4px 2px;
+    border-radius: 3px;
+}
+
+QTreeWidget::item:hover {
+    background-color: #F5F5F5;
+}
+
+QTreeWidget::item:selected {
+    background-color: #E3F2FD;
+    color: #1976D2;
+}
+
+QHeaderView::section {
+    background-color: #FAFAFA;
+    border: none;
+    border-bottom: 1px solid #E0E0E0;
+    padding: 6px 8px;
+    font-weight: 600;
+    color: #424242;
+}
+
+/* --- Properties panel --- */
+QGroupBox {
+    background-color: #FFFFFF;
+    border: 1px solid #E0E0E0;
+    border-radius: 6px;
+    margin-top: 12px;
+    padding: 12px 8px 8px 8px;
+    font-weight: 600;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 12px;
+    padding: 0 6px;
+    color: #1976D2;
+}
+
+QLabel {
+    color: #424242;
+}
+
+QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+    background-color: #FFFFFF;
+    border: 1px solid #E0E0E0;
+    border-radius: 4px;
+    padding: 4px 8px;
+    min-height: 24px;
+}
+
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
+    border-color: #1976D2;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #FFFFFF;
+    border: 1px solid #E0E0E0;
+    border-radius: 4px;
+    selection-background-color: #E3F2FD;
+    selection-color: #1976D2;
+}
+
+/* --- Console panel --- */
+QPlainTextEdit {
+    background-color: #FAFAFA;
+    border: 1px solid #E0E0E0;
+    border-radius: 6px;
+    padding: 6px;
+    font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
+    font-size: 12px;
+    color: #37474F;
+    selection-background-color: #E3F2FD;
+}
+
+/* --- Status bar --- */
+QStatusBar {
+    background-color: #FFFFFF;
+    border-top: 1px solid #E0E0E0;
+    color: #757575;
+    font-size: 12px;
+    padding: 2px 8px;
+}
+
+QStatusBar::item {
+    border: none;
+}
+
+/* --- Scroll bars --- */
+QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+    margin: 0;
+}
+
+QScrollBar::handle:vertical {
+    background: #BDBDBD;
+    border-radius: 4px;
+    min-height: 30px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #9E9E9E;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 8px;
+    margin: 0;
+}
+
+QScrollBar::handle:horizontal {
+    background: #BDBDBD;
+    border-radius: 4px;
+    min-width: 30px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #9E9E9E;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    width: 0;
+}
+
+/* --- Tab widget (si se usa en futuro) --- */
+QTabWidget::pane {
+    border: 1px solid #E0E0E0;
+    border-radius: 6px;
+    background: #FFFFFF;
+}
+
+QTabBar::tab {
+    background: #F5F5F5;
+    border: 1px solid #E0E0E0;
+    border-bottom: none;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 6px 16px;
+    margin-right: 2px;
+    color: #757575;
+}
+
+QTabBar::tab:selected {
+    background: #FFFFFF;
+    color: #1976D2;
+    font-weight: 600;
+}
+
+QTabBar::tab:hover:!selected {
+    background: #E3F2FD;
+}
+
+/* --- Push buttons --- */
+QPushButton {
+    background-color: #1976D2;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 18px;
+    font-weight: 600;
+    min-height: 28px;
+}
+
+QPushButton:hover {
+    background-color: #1565C0;
+}
+
+QPushButton:pressed {
+    background-color: #0D47A1;
+}
+
+QPushButton:disabled {
+    background-color: #BDBDBD;
+    color: #FFFFFF;
+}
+
+QPushButton[flat="true"] {
+    background: transparent;
+    color: #1976D2;
+    border: 1px solid #1976D2;
+}
+
+QPushButton[flat="true"]:hover {
+    background-color: #E3F2FD;
+}
+
+/* --- Tooltips --- */
+QToolTip {
+    background-color: #37474F;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+}
