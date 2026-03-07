@@ -114,6 +114,7 @@ class Material:
     name: str
     mat_type: MaterialType
     params: dict = field(default_factory=dict)
+    density: float = 0.0  # Densidad [kg/m³] para cálculo de peso propio
     # params varía según tipo. Ej: Steel02 → {Fy, E0, b, R0, cR1, cR2}
 
     def to_dict(self) -> dict:
@@ -122,6 +123,7 @@ class Material:
             "name": self.name,
             "mat_type": self.mat_type.value,
             "params": dict(self.params),
+            "density": self.density,
         }
 
     @classmethod
@@ -131,6 +133,7 @@ class Material:
             name=d["name"],
             mat_type=MaterialType(d["mat_type"]),
             params=d.get("params", {}),
+            density=d.get("density", 0.0),
         )
 
 
@@ -141,6 +144,7 @@ class Section:
     name: str
     sec_type: SectionType
     params: dict = field(default_factory=dict)
+    material_tag: Optional[int] = None  # Referencia a Material para densidad
     # Ej Elastic3D: {A, E, Iz, Iy, G, J}
 
     def to_dict(self) -> dict:
@@ -149,6 +153,7 @@ class Section:
             "name": self.name,
             "sec_type": self.sec_type.value,
             "params": dict(self.params),
+            "material_tag": self.material_tag,
         }
 
     @classmethod
@@ -158,6 +163,7 @@ class Section:
             name=d["name"],
             sec_type=SectionType(d["sec_type"]),
             params=d.get("params", {}),
+            material_tag=d.get("material_tag"),
         )
 
 
@@ -273,6 +279,7 @@ class LoadPattern:
     tag: int
     name: str
     time_series_type: str = "Constant"
+    self_weight_multiplier: float = 0.0  # Factor de peso propio (1.0 = completo)
     loads: list[NodalLoad] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -280,6 +287,7 @@ class LoadPattern:
             "tag": self.tag,
             "name": self.name,
             "time_series_type": self.time_series_type,
+            "self_weight_multiplier": self.self_weight_multiplier,
             "loads": [load.to_dict() for load in self.loads],
         }
 
@@ -289,6 +297,7 @@ class LoadPattern:
             tag=d["tag"],
             name=d["name"],
             time_series_type=d.get("time_series_type", "Constant"),
+            self_weight_multiplier=d.get("self_weight_multiplier", 0.0),
             loads=[NodalLoad.from_dict(ld) for ld in d.get("loads", [])],
         )
 

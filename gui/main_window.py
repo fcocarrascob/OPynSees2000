@@ -450,7 +450,7 @@ class MainWindow(QMainWindow):
             sec = self._model.sections.get(tag)
             if not sec:
                 return
-            dlg = SectionDialog(self, section=sec)
+            dlg = SectionDialog(self, section=sec, model=self._model)
             if dlg.exec():
                 edited = dlg.get_section()
                 self._model.sections[tag] = edited
@@ -519,11 +519,13 @@ class MainWindow(QMainWindow):
         if not path:
             return
         try:
-            self._model = load_project(Path(path))
+            self._model, notification = load_project(Path(path))
             self._current_file = Path(path)
             self._refresh_all()
             self._update_title()
             self._console.log_success(f"Proyecto abierto: {path}")
+            if notification:
+                self._console.log(notification)
         except Exception as exc:
             self._console.log_error(f"Error al abrir: {exc}")
 
@@ -608,6 +610,7 @@ class MainWindow(QMainWindow):
         dlg = SectionDialog(
             self,
             next_tag=self._model.next_section_tag(),
+            model=self._model,
         )
         if dlg.exec():
             sec = dlg.get_section()

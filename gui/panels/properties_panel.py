@@ -62,6 +62,9 @@ HUMAN_LABELS = {
     "loads": "Cargas",
     "ndm": "NDM",
     "ndf": "NDF",
+    "density": "Densidad [kg/m³]",
+    "material_tag": "Material (tag)",
+    "self_weight_multiplier": "Mult. peso propio",
 }
 
 

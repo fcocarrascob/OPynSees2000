@@ -1,3 +1,21 @@
+# Step 1.6: Actualizar Diálogo de Sección con Campo Material Tag
+
+## Goal
+Agregar un `QComboBox` en el diálogo de sección para seleccionar el material asociado (para obtener densidad en el cálculo de peso propio).
+
+## Prerequisites
+Steps 1 y 1.5 completados y commiteados. Estás en la branch `fix/sap2000-load-pattern-validation`.
+
+---
+
+### Step-by-Step Instructions
+
+#### 1.6.1 — Reemplazar `section_dialog.py` completo
+
+- [x] Abrir `gui/dialogs/section_dialog.py`
+- [x] Reemplazar el contenido **completo** del archivo con:
+
+```python
 """
 Diálogo para crear / editar secciones transversales.
 
@@ -187,3 +205,77 @@ class SectionDialog(QDialog):
             tag=tag, name=name, sec_type=sec_type, params=params,
             material_tag=material_tag,
         )
+```
+
+#### 1.6.2 — Actualizar llamadas a `SectionDialog` en `main_window.py`
+
+- [x] Abrir `gui/main_window.py`
+- [x] Localizar el método `_on_define_section` (línea ~628) y reemplazar:
+
+**Buscar:**
+```python
+    def _on_define_section(self) -> None:
+        """Abre el diálogo para crear una nueva sección."""
+        dlg = SectionDialog(
+            self,
+            next_tag=self._model.next_section_tag(),
+        )
+```
+
+**Reemplazar con:**
+```python
+    def _on_define_section(self) -> None:
+        """Abre el diálogo para crear una nueva sección."""
+        dlg = SectionDialog(
+            self,
+            next_tag=self._model.next_section_tag(),
+            model=self._model,
+        )
+```
+
+- [x] Localizar el double-click handler para secciones dentro de `_on_tree_item_double_clicked` (línea ~459) y reemplazar:
+
+**Buscar:**
+```python
+        elif category == "sections":
+            sec = self._model.sections.get(tag)
+            if not sec:
+                return
+            dlg = SectionDialog(self, section=sec)
+```
+
+**Reemplazar con:**
+```python
+        elif category == "sections":
+            sec = self._model.sections.get(tag)
+            if not sec:
+                return
+            dlg = SectionDialog(self, section=sec, model=self._model)
+```
+
+---
+
+### Step 1.6 Verification Checklist
+- [x] No hay errores de import al ejecutar `python -c "from gui.dialogs.section_dialog import SectionDialog"`
+- [ ] Al abrir "Definir → Secciones", el diálogo muestra campo "Material (densidad):" con combo
+- [ ] La primera opción del combo es "(Ninguno — sin peso propio)"
+- [ ] Si hay materiales en el modelo, aparecen listados como "1: Concreto f'c=28 MPa (2400.0 kg/m³)"
+- [ ] Crear sección sin material → `get_section().material_tag` es `None`
+- [ ] Crear sección con material 1 → `get_section().material_tag` es `1`
+- [ ] Editar sección existente con material_tag → combo muestra selección correcta
+- [ ] La GUI abre sin errores
+
+---
+
+### Step 1.6 STOP & COMMIT
+**STOP & COMMIT:** Agent must stop here and wait for the user to test, stage, and commit the change.
+
+Mensaje de commit sugerido:
+```
+feat(ui): add material selector to section dialog
+
+- QComboBox to select associated material for density lookup
+- Lists available materials with density info
+- Optional: None means no self-weight contribution
+- Pass model to SectionDialog for material list population
+```

@@ -4,7 +4,7 @@ Persistencia del modelo — lectura/escritura JSON (.opss).
 Formato del archivo:
 {
   "format": "OPynSees2000",
-  "version": 1,
+  "version": 2,
   "model": { ... StructuralModel.to_dict() ... }
 }
 """
@@ -17,7 +17,7 @@ from pathlib import Path
 from gui.core.model_data import StructuralModel
 
 
-PROJECT_VERSION = 1
+PROJECT_VERSION = 2
 FILE_FILTER = "OPynSees2000 (*.opss);;Todos los archivos (*)"
 
 
@@ -34,8 +34,15 @@ def save_project(model: StructuralModel, path: Path) -> None:
     )
 
 
-def load_project(path: Path) -> StructuralModel:
-    """Carga un modelo desde archivo JSON (.opss)."""
+def load_project(path: Path) -> tuple[StructuralModel, str]:
+    """
+    Carga un modelo desde archivo JSON (.opss).
+
+    Returns
+    -------
+    tuple[StructuralModel, str]
+        Modelo cargado y mensaje de notificación (vacío si no hay).
+    """
     text = path.read_text(encoding="utf-8")
     data = json.loads(text)
 
@@ -49,4 +56,20 @@ def load_project(path: Path) -> StructuralModel:
             f"Versión de archivo ({version}) más nueva que la soportada ({PROJECT_VERSION})."
         )
 
-    return StructuralModel.from_dict(data["model"])
+    model = StructuralModel.from_dict(data["model"])
+
+    notification = ""
+    if version < 2:
+        # Modelo antiguo: no tiene self_weight_multiplier / density / material_tag
+        has_dead = any(
+            p.name.upper() == "DEAD" and p.self_weight_multiplier > 0
+            for p in model.load_patterns.values()
+        )
+        if not has_dead:
+            notification = (
+                "ℹ️ Modelo cargado sin patrón DEAD con peso propio. "
+                "Considere agregar peso propio para análisis modal confiable.\n"
+                "Puede crear el patrón DEAD desde: Definir → Patrones de carga..."
+            )
+
+    return model, notification
