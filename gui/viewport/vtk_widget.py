@@ -585,6 +585,7 @@ class VTKViewport(QWidget):
                 self.highlight_element(self._pick_model, elem_tag)
                 self.item_picked.emit("elements", elem_tag)
 
+        self.plotter.disable_picking()
         self.plotter.enable_point_picking(
             callback=_on_pick,
             show_message=False,
