@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
 )
 
 from gui.core.model_data import StructuralModel
+from gui.core.undo_manager import UndoManager
 from gui.dialogs.about_dialog import AboutDialog
 from gui.panels.console_panel import ConsolePanel
 from gui.panels.model_tree import ModelTree
@@ -75,6 +76,9 @@ class MainWindow(QMainWindow):
         self._properties = PropertiesPanel()
         self._console = ConsolePanel()
 
+        self._undo_mgr = UndoManager(max_stack=100)
+        self._properties.set_undo_manager(self._undo_mgr)
+
         # Construcción de la interfaz
         self._build_menubar()
         self._build_toolbar()
@@ -85,6 +89,8 @@ class MainWindow(QMainWindow):
         self._tree.item_selected.connect(self._on_tree_item_selected)
         self._tree.itemDoubleClicked.connect(self._on_tree_item_double_clicked)
         self._viewport.item_picked.connect(self._on_viewport_pick)
+        self._properties.property_changed.connect(self._on_property_changed)
+        self._undo_mgr.state_changed.connect(self._update_undo_actions)
 
         # Carga inicial
         self._refresh_all()
@@ -164,6 +170,29 @@ class MainWindow(QMainWindow):
         act_exit.setShortcut(QKeySequence("Ctrl+Q"))
         act_exit.triggered.connect(self.close)
         m_file.addAction(act_exit)
+
+        # --- Editar ---
+        m_edit = mb.addMenu("&Editar")
+
+        self._act_undo = QAction("Deshacer", self)
+        self._act_undo.setShortcut(QKeySequence.StandardKey.Undo)
+        self._act_undo.setEnabled(False)
+        self._act_undo.triggered.connect(self._on_undo)
+        m_edit.addAction(self._act_undo)
+
+        self._act_redo = QAction("Rehacer", self)
+        self._act_redo.setShortcut(QKeySequence.StandardKey.Redo)
+        self._act_redo.setEnabled(False)
+        self._act_redo.triggered.connect(self._on_redo)
+        m_edit.addAction(self._act_redo)
+
+        m_edit.addSeparator()
+
+        act_delete = QAction("Eliminar selección", self)
+        act_delete.setShortcut(QKeySequence.StandardKey.Delete)
+        act_delete.setEnabled(False)
+        m_edit.addAction(act_delete)
+        self._act_delete = act_delete
 
         # --- Definir ---
         m_define = mb.addMenu("&Definir")
@@ -384,6 +413,7 @@ class MainWindow(QMainWindow):
         self._update_title()
         self._refresh_all()
         self._console.log("Modelo limpiado.")
+        self._undo_mgr.clear()
 
     def _on_load_demo(self) -> None:
         self._model = StructuralModel.create_demo()
@@ -709,6 +739,34 @@ class MainWindow(QMainWindow):
         """Maneja la selección de un objeto en el viewport."""
         self._properties.show_item(self._model, category, tag)
         self._console.log(f"Seleccionado: {category} → tag {tag}")
+
+    def _on_undo(self) -> None:
+        desc = self._undo_mgr.undo()
+        if desc:
+            self._refresh_all()
+            self._console.log(f"↩ Deshacer: {desc}")
+
+    def _on_redo(self) -> None:
+        desc = self._undo_mgr.redo()
+        if desc:
+            self._refresh_all()
+            self._console.log(f"↪ Rehacer: {desc}")
+
+    def _update_undo_actions(self) -> None:
+        self._act_undo.setEnabled(self._undo_mgr.can_undo())
+        self._act_redo.setEnabled(self._undo_mgr.can_redo())
+        if self._undo_mgr.can_undo():
+            self._act_undo.setToolTip(
+                f"Deshacer: {self._undo_mgr.undo_description()}"
+            )
+        if self._undo_mgr.can_redo():
+            self._act_redo.setToolTip(
+                f"Rehacer: {self._undo_mgr.redo_description()}"
+            )
+
+    def _on_property_changed(self, category: str, tag: int) -> None:
+        """Llamado cuando el properties panel edita una propiedad."""
+        self._refresh_all()
 
     # ------------------------------------------------------------------
     # Override close

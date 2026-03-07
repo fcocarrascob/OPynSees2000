@@ -14,13 +14,13 @@ Sprint 4 completado y commiteado. Branch `feat/gui-sap2000-workflow`.
 
 #### Step 11: Properties Panel Editable + Undo/Redo
 
-- [ ] Crear `gui/core/undo_manager.py`
-- [ ] Refactorizar `gui/panels/properties_panel.py` para campos editables
-- [ ] Modificar `gui/main_window.py` para Ctrl+Z / Ctrl+Y
+- [x] Crear `gui/core/undo_manager.py`
+- [x] Refactorizar `gui/panels/properties_panel.py` para campos editables
+- [x] Modificar `gui/main_window.py` para Ctrl+Z / Ctrl+Y
 
 ##### 11A. Crear `gui/core/undo_manager.py`
 
-- [ ] Crear el archivo con el siguiente contenido completo:
+- [x] Crear el archivo con el siguiente contenido completo:
 
 ```python
 """
@@ -188,7 +188,7 @@ class UndoManager(QObject):
 
 El Properties Panel actual es read-only. Se refactoriza para que los campos numéricos y de texto sean editables, y al presionar Enter se aplique el cambio mediante el UndoManager.
 
-- [ ] Reemplazar el contenido completo de `gui/panels/properties_panel.py`:
+- [x] Reemplazar el contenido completo de `gui/panels/properties_panel.py`:
 
 ```python
 """
@@ -506,26 +506,26 @@ class PropertiesPanel(QScrollArea):
 
 ##### 11C. Modificar `gui/main_window.py` — Undo/Redo
 
-- [ ] Agregar import:
+- [x] Agregar import:
 
 ```python
 from gui.core.undo_manager import UndoManager
 ```
 
-- [ ] En `__init__`, crear el UndoManager y conectarlo. Después de crear los widgets y antes de `_build_menubar()`:
+- [x] En `__init__`, crear el UndoManager y conectarlo. Después de crear los widgets y antes de `_build_menubar()`:
 
 ```python
         self._undo_mgr = UndoManager(max_stack=100)
         self._properties.set_undo_manager(self._undo_mgr)
 ```
 
-- [ ] Conectar `property_changed` del properties panel. En `__init__`, después de las conexiones existentes:
+- [x] Conectar `property_changed` del properties panel. En `__init__`, después de las conexiones existentes:
 
 ```python
         self._properties.property_changed.connect(self._on_property_changed)
 ```
 
-- [ ] Agregar un menú Editar. En `_build_menubar`, agregar ANTES del menú Definir:
+- [x] Agregar un menú Editar. En `_build_menubar`, agregar ANTES del menú Definir:
 
 ```python
         # --- Editar ---
@@ -552,13 +552,13 @@ from gui.core.undo_manager import UndoManager
         self._act_delete = act_delete
 ```
 
-- [ ] Conectar `state_changed` del UndoManager. En `__init__`:
+- [x] Conectar `state_changed` del UndoManager. En `__init__`:
 
 ```python
         self._undo_mgr.state_changed.connect(self._update_undo_actions)
 ```
 
-- [ ] Agregar slots:
+- [x] Agregar slots:
 
 ```python
     def _on_undo(self) -> None:
@@ -590,7 +590,7 @@ from gui.core.undo_manager import UndoManager
         self._refresh_all()
 ```
 
-- [ ] Modificar `_on_new_model` para limpiar undo:
+- [x] Modificar `_on_new_model` para limpiar undo:
 
 Agregar al final de `_on_new_model`:
 ```python
@@ -629,14 +629,14 @@ git commit -m "feat: editable properties panel with undo/redo
 
 #### Step 12: Configuración de Proyecto y Packaging
 
-- [ ] Crear `pyproject.toml`
-- [ ] Crear `requirements.txt`
-- [ ] Actualizar `.gitignore` si necesario
-- [ ] Actualizar `README.md`
+- [x] Crear `pyproject.toml`
+- [x] Crear `requirements.txt`
+- [x] Actualizar `.gitignore` si necesario
+- [x] Actualizar `README.md`
 
 ##### 12A. Crear `pyproject.toml`
 
-- [ ] Crear el archivo en la raíz del workspace:
+- [x] Crear el archivo en la raíz del workspace:
 
 ```toml
 [build-system]
@@ -715,7 +715,7 @@ qt_api = "pyside6"
 
 ##### 12B. Crear `requirements.txt`
 
-- [ ] Generar desde el venv actual ejecutando en terminal:
+- [x] Generar desde el venv actual ejecutando en terminal:
 
 ```bash
 pip freeze > requirements.txt
@@ -732,7 +732,7 @@ numpy>=1.24
 
 ##### 12C. Actualizar `.gitignore`
 
-- [ ] Verificar que `.gitignore` incluye al menos:
+- [x] Verificar que `.gitignore` incluye al menos:
 
 ```gitignore
 # Python
@@ -764,7 +764,7 @@ Thumbs.db
 
 ##### 12D. Actualizar `README.md`
 
-- [ ] Reemplazar o actualizar el README.md de la raíz del workspace:
+- [x] Reemplazar o actualizar el README.md de la raíz del workspace:
 
 ```markdown
 # OPynSees2000
@@ -858,7 +858,7 @@ MIT
 
 ##### 12E. Crear `gui/main.py` actualizado (entry point)
 
-- [ ] Verificar que `gui/main.py` exporta una función `main()` para el entry point de `pyproject.toml`. Si no la tiene, actualizar:
+- [x] Verificar que `gui/main.py` exporta una función `main()` para el entry point de `pyproject.toml`. Si no la tiene, actualizar:
 
 Agregar al final de `gui/main.py` (si no existe ya):
 
