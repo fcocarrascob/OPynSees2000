@@ -12,8 +12,8 @@ Steps 1–5 completados y commiteados. Estás en la branch `fix/sap2000-load-pat
 
 #### 6.1 — Actualizar `READ_ONLY_FIELDS` en `properties_panel.py`
 
-- [ ] Abrir `gui/panels/properties_panel.py`
-- [ ] Localizar la constante `READ_ONLY_FIELDS` (línea ~32) y reemplazar:
+- [x] Abrir `gui/panels/properties_panel.py`
+- [x] Localizar la constante `READ_ONLY_FIELDS` (línea ~32) y reemplazar:
 
 **Buscar:**
 ```python
@@ -36,7 +36,7 @@ READ_ONLY_FIELDS = {
 
 #### 6.2 — Actualizar `HUMAN_LABELS` para nuevos campos
 
-- [ ] Verificar que las entradas agregadas en Step 1 ya están presentes en `HUMAN_LABELS`:
+- [x] Verificar que las entradas agregadas en Step 1 ya están presentes en `HUMAN_LABELS`:
 
 ```python
     "density": "Densidad [kg/m³]",
@@ -72,7 +72,7 @@ Esto ya cubre correctamente:
 ---
 
 ### Step 6 Verification Checklist
-- [ ] No hay errores de import al ejecutar `python -c "from gui.panels.properties_panel import PropertiesPanel"`
+- [x] No hay errores de import al ejecutar `python -c "from gui.panels.properties_panel import PropertiesPanel"`
 - [ ] Seleccionar nodo en árbol → campo "Tag" no es editable (fondo gris)
 - [ ] Seleccionar material en árbol → campo "Tipo de material" no es editable
 - [ ] Seleccionar sección en árbol → campo "Tipo de sección" no es editable

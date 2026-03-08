@@ -28,7 +28,14 @@ if TYPE_CHECKING:
 
 
 # Campos read-only que no se deben editar
-READ_ONLY_FIELDS = {"tag", "elem_type", "mat_type", "sec_type", "transf_type"}
+READ_ONLY_FIELDS = {
+    "tag",
+    "elem_type",
+    "mat_type",
+    "sec_type",
+    "transf_type",
+    "time_series_type",
+}
 
 # Mapeo de nombres de campo a etiquetas legibles (español)
 HUMAN_LABELS = {
