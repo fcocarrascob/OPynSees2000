@@ -12,8 +12,8 @@ Steps 1–5 must be completed and committed.
 
 #### 6.1 — Add `CompoundUndoCommand` to `undo_manager.py`
 
-- [ ] Open `gui/core/undo_manager.py`
-- [ ] Add the following class **after** `DictChangeCommand` and **before** `UndoManager`:
+- [x] Open `gui/core/undo_manager.py`
+- [x] Add the following class **after** `DictChangeCommand` and **before** `UndoManager`:
 
 ```python
 class CompoundUndoCommand(UndoCommand):
@@ -37,8 +37,8 @@ class CompoundUndoCommand(UndoCommand):
 
 #### 6.2 — Add offset widgets to status bar
 
-- [ ] Open `gui/main_window.py`
-- [ ] Add the import for `QDoubleSpinBox` and `QLabel` to the PySide6.QtWidgets import (if not already present):
+- [x] Open `gui/main_window.py`
+- [x] Add the import for `QDoubleSpinBox` and `QLabel` to the PySide6.QtWidgets import (if not already present):
 
 ```python
 from PySide6.QtWidgets import (
@@ -53,13 +53,13 @@ from PySide6.QtWidgets import (
 )
 ```
 
-- [ ] Add the import for `CompoundUndoCommand`:
+- [x] Add the import for `CompoundUndoCommand`:
 
 ```python
 from gui.core.undo_manager import UndoManager, DictChangeCommand, CompoundUndoCommand
 ```
 
-- [ ] In `_build_statusbar`, replace the entire method with:
+- [x] In `_build_statusbar`, replace the entire method with:
 
 ```python
     def _build_statusbar(self) -> None:
@@ -126,7 +126,7 @@ from gui.core.undo_manager import UndoManager, DictChangeCommand, CompoundUndoCo
 
 #### 6.3 — Show/hide offset widgets based on mode
 
-- [ ] In `set_mode()`, update to show/hide offset widgets. Add these lines inside the method:
+- [x] In `set_mode()`, update to show/hide offset widgets. Add these lines inside the method:
   - After the viewport mode setup for SELECT:
   
 ```python
@@ -186,7 +186,7 @@ The full updated `set_mode` should be:
 
 #### 6.4 — Implement DRAW_NODE click handler
 
-- [ ] Replace the placeholder `_on_drawing_click` method in `MainWindow` with:
+- [x] Replace the placeholder `_on_drawing_click` method in `MainWindow` with:
 
 ```python
     def _on_drawing_click(self, x: float, y: float, z: float) -> None:
@@ -233,7 +233,7 @@ The full updated `set_mode` should be:
 
 #### 6.5 — Update mouse move preview for offset
 
-- [ ] Replace the `_on_drawing_mouse_move` method with:
+- [x] Replace the `_on_drawing_mouse_move` method with:
 
 ```python
     def _on_drawing_mouse_move(self, x: float, y: float, z: float) -> None:
@@ -287,7 +287,7 @@ The full updated `set_mode` should be:
 
 #### 6.6 — Add R key handler for offset reset
 
-- [ ] Update the `keyPressEvent` override in `MainWindow`:
+- [x] Update the `keyPressEvent` override in `MainWindow`:
 
 ```python
     def keyPressEvent(self, event) -> None:
@@ -306,7 +306,7 @@ The full updated `set_mode` should be:
 
 #### 6.7 — Re-enable picking after refresh in draw mode
 
-- [ ] Update `_refresh_all` to respect the current mode. Replace:
+- [x] Update `_refresh_all` to respect the current mode. Replace:
 
 ```python
     def _refresh_all(self) -> None:

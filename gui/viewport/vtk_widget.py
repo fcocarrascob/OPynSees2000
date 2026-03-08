@@ -43,8 +43,12 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
 
 # Nombres de actores de preview
 _PREVIEW_SNAP = "_preview_snap"
+_PREVIEW_NODE = "_preview_node"
+_PREVIEW_OFFSET = "_preview_offset"
 
 COLOR_SNAP_INDICATOR = "#4CAF50"  # verde — snap indicator
+COLOR_PREVIEW_NODE = "#FF9800"    # naranja — nodo preview
+COLOR_PREVIEW_OFFSET = "#9E9E9E"  # gris — línea de offset
 
 
 class VTKViewport(QWidget):
@@ -777,6 +781,47 @@ class VTKViewport(QWidget):
     def clear_snap_indicator(self) -> None:
         """Elimina el actor de snap indicator."""
         self.plotter.remove_actor(_PREVIEW_SNAP, render=False)
+        self.plotter.render()
+
+    def show_preview_node(self, coords: tuple[float, float, float]) -> None:
+        """Muestra una esfera naranja preview en la posición dada."""
+        self.plotter.remove_actor(_PREVIEW_NODE, render=False)
+        x, y, z = coords
+        sphere = pv.Sphere(radius=0.12, center=(x, y, z))
+        self.plotter.add_mesh(
+            sphere,
+            color=COLOR_PREVIEW_NODE,
+            opacity=0.85,
+            name=_PREVIEW_NODE,
+        )
+        self.plotter.render()
+
+    def show_offset_preview(
+        self,
+        base: tuple[float, float, float],
+        final: tuple[float, float, float],
+    ) -> None:
+        """Muestra una línea gris desde base hasta final (offset preview)."""
+        self.plotter.remove_actor(_PREVIEW_OFFSET, render=False)
+        if base == final:
+            return
+        points = np.array([list(base), list(final)], dtype=float)
+        lines = np.array([2, 0, 1])
+        mesh = pv.PolyData(points, lines=lines)
+        self.plotter.add_mesh(
+            mesh,
+            color=COLOR_PREVIEW_OFFSET,
+            line_width=2,
+            opacity=0.7,
+            name=_PREVIEW_OFFSET,
+        )
+        self.plotter.render()
+
+    def clear_all_previews(self) -> None:
+        """Elimina todos los actores de preview (snap, node, offset)."""
+        self.plotter.remove_actor(_PREVIEW_SNAP, render=False)
+        self.plotter.remove_actor(_PREVIEW_NODE, render=False)
+        self.plotter.remove_actor(_PREVIEW_OFFSET, render=False)
         self.plotter.render()
 
     def eventFilter(self, obj, event) -> bool:

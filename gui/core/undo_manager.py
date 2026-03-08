@@ -94,6 +94,25 @@ class DictChangeCommand(UndoCommand):
         return self._desc
 
 
+class CompoundUndoCommand(UndoCommand):
+    """Comando compuesto que agrupa múltiples sub-comandos como una sola operación."""
+
+    def __init__(self, commands: list[UndoCommand], desc: str = "") -> None:
+        self._commands = list(commands)
+        self._desc = desc
+
+    def redo(self) -> None:
+        for cmd in self._commands:
+            cmd.redo()
+
+    def undo(self) -> None:
+        for cmd in reversed(self._commands):
+            cmd.undo()
+
+    def description(self) -> str:
+        return self._desc
+
+
 class UndoManager(QObject):
     """Gestor de pila de Undo/Redo."""
 

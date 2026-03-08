@@ -25,7 +25,9 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QSize, QEvent, QObject
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 from PySide6.QtWidgets import (
+    QDoubleSpinBox,
     QFileDialog,
+    QLabel,
     QMainWindow,
     QSplitter,
     QStatusBar,
@@ -34,7 +36,7 @@ from PySide6.QtWidgets import (
 )
 
 from gui.core.model_data import StructuralModel
-from gui.core.undo_manager import UndoManager
+from gui.core.undo_manager import UndoManager, DictChangeCommand, CompoundUndoCommand
 from gui.dialogs.about_dialog import AboutDialog
 from gui.panels.console_panel import ConsolePanel
 from gui.panels.model_tree import ModelTree
@@ -475,7 +477,63 @@ class MainWindow(QMainWindow):
     def _build_statusbar(self) -> None:
         sb = QStatusBar()
         self.setStatusBar(sb)
+
+        # Offset widgets (solo visibles en DRAW_NODE)
+        self._offset_label = QLabel("  Offset:")
+        self._offset_dx = QDoubleSpinBox()
+        self._offset_dx.setPrefix("ΔX: ")
+        self._offset_dx.setSuffix(" m")
+        self._offset_dx.setDecimals(2)
+        self._offset_dx.setRange(-1e6, 1e6)
+        self._offset_dx.setValue(0.0)
+        self._offset_dx.setFixedWidth(120)
+
+        self._offset_dy = QDoubleSpinBox()
+        self._offset_dy.setPrefix("ΔY: ")
+        self._offset_dy.setSuffix(" m")
+        self._offset_dy.setDecimals(2)
+        self._offset_dy.setRange(-1e6, 1e6)
+        self._offset_dy.setValue(0.0)
+        self._offset_dy.setFixedWidth(120)
+
+        self._offset_dz = QDoubleSpinBox()
+        self._offset_dz.setPrefix("ΔZ: ")
+        self._offset_dz.setSuffix(" m")
+        self._offset_dz.setDecimals(2)
+        self._offset_dz.setRange(-1e6, 1e6)
+        self._offset_dz.setValue(0.0)
+        self._offset_dz.setFixedWidth(120)
+
+        sb.addPermanentWidget(self._offset_label)
+        sb.addPermanentWidget(self._offset_dx)
+        sb.addPermanentWidget(self._offset_dy)
+        sb.addPermanentWidget(self._offset_dz)
+
+        # Ocultar por defecto
+        self._set_offset_widgets_visible(False)
+
         self._update_statusbar()
+
+    def _set_offset_widgets_visible(self, visible: bool) -> None:
+        """Muestra u oculta los widgets de offset en la status bar."""
+        self._offset_label.setVisible(visible)
+        self._offset_dx.setVisible(visible)
+        self._offset_dy.setVisible(visible)
+        self._offset_dz.setVisible(visible)
+
+    def _get_offset(self) -> tuple[float, float, float]:
+        """Retorna el offset actual (ΔX, ΔY, ΔZ)."""
+        return (
+            self._offset_dx.value(),
+            self._offset_dy.value(),
+            self._offset_dz.value(),
+        )
+
+    def _reset_offset(self) -> None:
+        """Resetea el offset a (0, 0, 0)."""
+        self._offset_dx.setValue(0.0)
+        self._offset_dy.setValue(0.0)
+        self._offset_dz.setValue(0.0)
 
     def _update_statusbar(self) -> None:
         if self._interaction_mode == InteractionMode.SELECT:
@@ -510,11 +568,13 @@ class MainWindow(QMainWindow):
         if mode == InteractionMode.SELECT:
             self._viewport.enable_picking(self._model)
             self._viewport.set_drawing_mode(False)
-            self._viewport.clear_snap_indicator()
+            self._viewport.clear_all_previews()
+            self._set_offset_widgets_visible(False)
             self._update_statusbar()
         else:
             self._viewport.disable_picking()
             self._viewport.set_drawing_mode(True)
+            self._set_offset_widgets_visible(mode == InteractionMode.DRAW_NODE)
             mode_names = {
                 InteractionMode.DRAW_NODE: "Dibujar Nodo",
                 InteractionMode.DRAW_FRAME: "Dibujar Frame",
@@ -547,15 +607,81 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _on_drawing_click(self, x: float, y: float, z: float) -> None:
-        """Maneja clic en modo dibujo — placeholder para Steps 6-8."""
-        self._console.log(f"Drawing click: ({x:.2f}, {y:.2f}, {z:.2f})")
+        """Maneja clic en modo dibujo."""
+        if self._interaction_mode == InteractionMode.DRAW_NODE:
+            self._handle_draw_node(x, y, z)
+        elif self._interaction_mode == InteractionMode.DRAW_FRAME:
+            self._handle_draw_frame(x, y, z)
+        elif self._interaction_mode == InteractionMode.DRAW_SHELL:
+            self._handle_draw_shell(x, y, z)
+
+    def _handle_draw_node(self, x: float, y: float, z: float) -> None:
+        """Crea un nodo en la posición clickeada + offset."""
+        dx, dy, dz = self._get_offset()
+        final_x = x + dx
+        final_y = y + dy
+        final_z = z + dz
+
+        tag = self._model.next_node_tag()
+        from gui.core.model_data import Node
+        node = Node(tag=tag, x=final_x, y=final_y, z=final_z)
+
+        cmd = DictChangeCommand(
+            target_dict=self._model.nodes,
+            key=tag,
+            old_value=None,
+            new_value=node,
+            desc=f"Crear nodo {tag} ({final_x:.2f}, {final_y:.2f}, {final_z:.2f})",
+        )
+        self._undo_mgr.execute(cmd)
+        self._refresh_all()
+        self._console.log_success(
+            f"Nodo {tag} creado: ({final_x:.2f}, {final_y:.2f}, {final_z:.2f})"
+        )
+
+    def _handle_draw_frame(self, x: float, y: float, z: float) -> None:
+        """Placeholder — implementado en Step 7."""
+        pass
+
+    def _handle_draw_shell(self, x: float, y: float, z: float) -> None:
+        """Placeholder — implementado en Step 8."""
+        pass
 
     def _on_drawing_mouse_move(self, x: float, y: float, z: float) -> None:
-        """Actualiza snap indicator durante movimiento del mouse en modo dibujo."""
-        if self._snap_mgr and self._snap_mgr.enabled:
-            self._viewport.show_snap_indicator((x, y, z))
-        else:
-            self._viewport.clear_snap_indicator()
+        """Actualiza previews durante movimiento del mouse en modo dibujo."""
+        if self._interaction_mode == InteractionMode.DRAW_NODE:
+            # Snap indicator en la posición del cursor
+            if self._snap_mgr and self._snap_mgr.enabled:
+                self._viewport.show_snap_indicator((x, y, z))
+
+            # Calcular posición final con offset
+            dx, dy, dz = self._get_offset()
+            final = (x + dx, y + dy, z + dz)
+
+            # Preview node en posición final
+            self._viewport.show_preview_node(final)
+
+            # Si hay offset, mostrar línea punteada desde click a final
+            if dx != 0 or dy != 0 or dz != 0:
+                self._viewport.show_offset_preview((x, y, z), final)
+
+        elif self._interaction_mode == InteractionMode.DRAW_FRAME:
+            if self._snap_mgr and self._snap_mgr.enabled:
+                self._viewport.show_snap_indicator((x, y, z))
+            self._update_frame_preview(x, y, z)
+
+        elif self._interaction_mode == InteractionMode.DRAW_SHELL:
+            if self._snap_mgr and self._snap_mgr.enabled:
+                self._viewport.show_snap_indicator((x, y, z))
+            self._update_shell_preview(x, y, z)
+
+    def _update_frame_preview(self, x: float, y: float, z: float) -> None:
+        """Actualiza preview de frame — implementado en Step 7."""
+        pass
+
+    def _update_shell_preview(self, x: float, y: float, z: float) -> None:
+        """Actualiza preview de shell — implementado en Step 8."""
+        pass
 
     def _on_new_model(self) -> None:
         self._model.clear()
@@ -867,7 +993,8 @@ class MainWindow(QMainWindow):
         """Refresca tree, viewport y statusbar."""
         self._tree.refresh(self._model)
         self._viewport.display_model(self._model)
-        self._viewport.enable_picking(self._model)
+        if self._interaction_mode == InteractionMode.SELECT:
+            self._viewport.enable_picking(self._model)
         self._update_statusbar()
 
     def _refresh_viewport(self) -> None:
@@ -988,6 +1115,10 @@ class MainWindow(QMainWindow):
         if event.key() == Qt.Key.Key_Escape:
             if self._interaction_mode != InteractionMode.SELECT:
                 self.set_mode(InteractionMode.SELECT)
-                event.accept()
+                return
+        elif event.key() == Qt.Key.Key_R:
+            if self._interaction_mode == InteractionMode.DRAW_NODE:
+                self._reset_offset()
+                self._console.log("Offset reseteado a (0, 0, 0)")
                 return
         super().keyPressEvent(event)
