@@ -22,8 +22,8 @@ from __future__ import annotations
 from enum import Enum, auto
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtCore import Qt, QSize, QEvent, QObject
+from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 from PySide6.QtWidgets import (
     QFileDialog,
     QMainWindow,
@@ -109,6 +109,9 @@ class MainWindow(QMainWindow):
         self._viewport.item_picked.connect(self._on_viewport_pick)
         self._properties.property_changed.connect(self._on_property_changed)
         self._undo_mgr.state_changed.connect(self._update_undo_actions)
+
+        # Capturar teclado del viewport VTK (para Escape, etc.)
+        self._viewport.plotter.installEventFilter(self)
 
         # Carga inicial
         self._refresh_all()
@@ -424,6 +427,44 @@ class MainWindow(QMainWindow):
         self._act_snap.toggled.connect(self._on_toggle_snap)
         tb.addAction(self._act_snap)
 
+        # --- Separador de modos ---
+        tb.addSeparator()
+
+        # Grupo exclusivo de modos
+        self._mode_group = QActionGroup(self)
+        self._mode_group.setExclusive(True)
+
+        self._act_mode_select = QAction("Selección", self)
+        self._act_mode_select.setToolTip("Modo selección (Escape)")
+        self._act_mode_select.setCheckable(True)
+        self._act_mode_select.setChecked(True)
+        self._act_mode_select.setData(InteractionMode.SELECT)
+        self._mode_group.addAction(self._act_mode_select)
+        tb.addAction(self._act_mode_select)
+
+        self._act_mode_node = QAction("Dibujar Nodo", self)
+        self._act_mode_node.setToolTip("Dibujar nodos en viewport (1 clic)")
+        self._act_mode_node.setCheckable(True)
+        self._act_mode_node.setData(InteractionMode.DRAW_NODE)
+        self._mode_group.addAction(self._act_mode_node)
+        tb.addAction(self._act_mode_node)
+
+        self._act_mode_frame = QAction("Dibujar Frame", self)
+        self._act_mode_frame.setToolTip("Dibujar frames en viewport (2 clics)")
+        self._act_mode_frame.setCheckable(True)
+        self._act_mode_frame.setData(InteractionMode.DRAW_FRAME)
+        self._mode_group.addAction(self._act_mode_frame)
+        tb.addAction(self._act_mode_frame)
+
+        self._act_mode_shell = QAction("Dibujar Shell", self)
+        self._act_mode_shell.setToolTip("Dibujar shells en viewport (4 clics)")
+        self._act_mode_shell.setCheckable(True)
+        self._act_mode_shell.setData(InteractionMode.DRAW_SHELL)
+        self._mode_group.addAction(self._act_mode_shell)
+        tb.addAction(self._act_mode_shell)
+
+        self._mode_group.triggered.connect(self._on_mode_action_triggered)
+
     # ------------------------------------------------------------------
     # Status bar
     # ------------------------------------------------------------------
@@ -441,15 +482,32 @@ class MainWindow(QMainWindow):
     # Mode switching
     # ------------------------------------------------------------------
 
+    def _on_mode_action_triggered(self, action: QAction) -> None:
+        """Slot cuando se selecciona un modo desde el toolbar."""
+        mode = action.data()
+        if mode is not None:
+            self.set_mode(mode)
+
     def set_mode(self, mode: InteractionMode) -> None:
         """Cambia el modo de interacción activo."""
         old_mode = self._interaction_mode
         self._interaction_mode = mode
 
+        # Sincronizar toolbar buttons
+        mode_actions = {
+            InteractionMode.SELECT: self._act_mode_select,
+            InteractionMode.DRAW_NODE: self._act_mode_node,
+            InteractionMode.DRAW_FRAME: self._act_mode_frame,
+            InteractionMode.DRAW_SHELL: self._act_mode_shell,
+        }
+        target_action = mode_actions.get(mode)
+        if target_action and not target_action.isChecked():
+            target_action.setChecked(True)
+
         if mode == InteractionMode.SELECT:
             self._viewport.enable_picking(self._model)
             self._viewport.set_drawing_mode(False)
-            self.statusBar().showMessage(self._base_status_message())
+            self._update_statusbar()
         else:
             self._viewport.disable_picking()
             self._viewport.set_drawing_mode(True)
@@ -459,9 +517,10 @@ class MainWindow(QMainWindow):
                 InteractionMode.DRAW_SHELL: "Dibujar Shell",
             }
             mode_label = mode_names.get(mode, "")
+            snap = self._snap_mgr.status_text()
             self.statusBar().showMessage(
-                f"Modo: {mode_label}  |  Clic en viewport para crear  |  "
-                f"Escape \u2192 Selecci\u00f3n"
+                f"Modo: {mode_label}  |  {snap}  |  "
+                f"Clic en viewport para crear  |  Escape \u2192 Selecci\u00f3n"
             )
 
         if old_mode != mode:
@@ -901,10 +960,19 @@ class MainWindow(QMainWindow):
         self._viewport.close()
         super().closeEvent(event)
 
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        """Intercepta eventos del viewport VTK para capturar teclas globales."""
+        if event.type() == QEvent.Type.KeyPress:
+            self.keyPressEvent(event)
+            if event.isAccepted():
+                return True
+        return super().eventFilter(obj, event)
+
     def keyPressEvent(self, event) -> None:
         """Maneja atajos de teclado globales."""
         if event.key() == Qt.Key.Key_Escape:
             if self._interaction_mode != InteractionMode.SELECT:
                 self.set_mode(InteractionMode.SELECT)
+                event.accept()
                 return
         super().keyPressEvent(event)

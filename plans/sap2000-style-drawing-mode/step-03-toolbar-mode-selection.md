@@ -12,8 +12,8 @@ Steps 1–2 must be completed and committed.
 
 #### 3.1 — Add `QActionGroup` import
 
-- [ ] Open `gui/main_window.py`
-- [ ] Add `QActionGroup` to the existing `PySide6.QtGui` import line:
+- [x] Open `gui/main_window.py`
+- [x] Add `QActionGroup` to the existing `PySide6.QtGui` import line:
 
 ```python
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence
@@ -21,7 +21,7 @@ from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 
 #### 3.2 — Add mode toolbar in `_build_toolbar`
 
-- [ ] In `_build_toolbar`, at the **very end** of the method (after the `Snap` button block), add:
+- [x] In `_build_toolbar`, at the **very end** of the method (after the `Snap` button block), add:
 
 ```python
         # --- Separador de modos ---
@@ -65,7 +65,7 @@ from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 
 #### 3.3 — Add mode action triggered slot
 
-- [ ] Add this slot to the Mode switching section (after `_base_status_message`):
+- [x] Add this slot to the Mode switching section (after `_base_status_message`):
 
 ```python
     def _on_mode_action_triggered(self, action: QAction) -> None:
@@ -77,7 +77,7 @@ from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 
 #### 3.4 — Update `set_mode` to sync toolbar buttons
 
-- [ ] Modify the existing `set_mode` method to also sync the toolbar button state. Replace the full method with:
+- [x] Modify the existing `set_mode` method to also sync the toolbar button state. Replace the full method with:
 
 ```python
     def set_mode(self, mode: InteractionMode) -> None:
