@@ -12,7 +12,7 @@ Step 1 (Mode System Foundation) must be completed and committed.
 
 #### 2.1 — Create `gui/viewport/snap_manager.py`
 
-- [ ] Create a new file `gui/viewport/snap_manager.py` with the following content:
+- [x] Create a new file `gui/viewport/snap_manager.py` with the following content:
 
 ```python
 """
@@ -79,21 +79,21 @@ class SnapManager:
 
 #### 2.2 — Add snap toggle to `MainWindow` toolbar
 
-- [ ] Open `gui/main_window.py`
-- [ ] Add this import at the top, with the other imports:
+- [x] Open `gui/main_window.py`
+- [x] Add this import at the top, with the other imports:
 
 ```python
 from gui.viewport.snap_manager import SnapManager
 ```
 
-- [ ] In `MainWindow.__init__`, after `self._interaction_mode = InteractionMode.SELECT`, add:
+- [x] In `MainWindow.__init__`, after `self._interaction_mode = InteractionMode.SELECT`, add:
 
 ```python
         # Snap manager
         self._snap_mgr = SnapManager(spacing=1.0, enabled=True)
 ```
 
-- [ ] In `_build_toolbar`, at the **end** of the method (after the `self._act_loads` block), add:
+- [x] In `_build_toolbar`, at the **end** of the method (after the `self._act_loads` block), add:
 
 ```python
         tb.addSeparator()
@@ -108,7 +108,7 @@ from gui.viewport.snap_manager import SnapManager
 
 #### 2.3 — Add F9 shortcut and snap toggle slot
 
-- [ ] Add the F9 keyboard shortcut. In `_build_menubar`, at the end of the `Opciones` menu section (after `act_units`), add:
+- [x] Add the F9 keyboard shortcut. In `_build_menubar`, at the end of the `Opciones` menu section (after `act_units`), add:
 
 ```python
         m_options.addSeparator()
@@ -122,7 +122,7 @@ from gui.viewport.snap_manager import SnapManager
         m_options.addAction(self._act_snap_menu)
 ```
 
-- [ ] Add the toggle slot. In the Slots section, add this method:
+- [x] Add the toggle slot. In the Slots section, add this method:
 
 ```python
     def _on_toggle_snap(self, checked: bool) -> None:
@@ -141,7 +141,7 @@ from gui.viewport.snap_manager import SnapManager
 
 #### 2.4 — Update status bar to show snap info
 
-- [ ] Update `_base_status_message` to include snap status:
+- [x] Update `_base_status_message` to include snap status:
 
 ```python
     def _base_status_message(self) -> str:
@@ -159,19 +159,19 @@ from gui.viewport.snap_manager import SnapManager
 
 #### 2.5 — Pass snap manager to viewport
 
-- [ ] In `MainWindow.__init__`, after creating `self._snap_mgr`, pass it to the viewport. Add after the snap manager creation:
+- [x] In `MainWindow.__init__`, after creating `self._snap_mgr`, pass it to the viewport. Add after the snap manager creation:
 
 ```python
         self._viewport.set_snap_manager(self._snap_mgr)
 ```
 
-- [ ] In `gui/viewport/vtk_widget.py`, add a `_snap_mgr` attribute in `__init__`, after `self._drawing_mode`:
+- [x] In `gui/viewport/vtk_widget.py`, add a `_snap_mgr` attribute in `__init__`, after `self._drawing_mode`:
 
 ```python
         self._snap_mgr: "SnapManager | None" = None
 ```
 
-- [ ] Add a `set_snap_manager` method to `VTKViewport`, after `set_drawing_mode`:
+- [x] Add a `set_snap_manager` method to `VTKViewport`, after `set_drawing_mode`:
 
 ```python
     def set_snap_manager(self, mgr) -> None:
@@ -182,7 +182,7 @@ from gui.viewport.snap_manager import SnapManager
 ---
 
 ### Step 2 Verification Checklist
-- [ ] No build errors — run `python -m gui.main` and verify the window opens
+- [x] No build errors — run `python -m gui.main` and verify the window opens
 - [ ] Toolbar shows a "Snap" checkable button (checked by default)
 - [ ] Clicking "Snap" button toggles it ON/OFF, console prints snap status
 - [ ] Opciones menu has "Snap a grilla" with F9 shortcut

@@ -40,6 +40,7 @@ from gui.panels.console_panel import ConsolePanel
 from gui.panels.model_tree import ModelTree
 from gui.panels.properties_panel import PropertiesPanel
 from gui.viewport.vtk_widget import VTKViewport
+from gui.viewport.snap_manager import SnapManager
 from gui.core.project_io import save_project, load_project, FILE_FILTER
 from gui.dialogs.element_dialog import ElementDialog
 from gui.dialogs.fixity_dialog import FixityDialog
@@ -91,11 +92,16 @@ class MainWindow(QMainWindow):
         # Modo de interacción activo
         self._interaction_mode = InteractionMode.SELECT
 
+        # Snap manager
+        self._snap_mgr = SnapManager(spacing=1.0, enabled=True)
+
         # Construcción de la interfaz
         self._build_menubar()
         self._build_toolbar()
         self._build_layout()
         self._build_statusbar()
+
+        self._viewport.set_snap_manager(self._snap_mgr)
 
         # Conexiones
         self._tree.item_selected.connect(self._on_tree_item_selected)
@@ -316,6 +322,16 @@ class MainWindow(QMainWindow):
         act_units.setEnabled(False)
         m_options.addAction(act_units)
 
+        m_options.addSeparator()
+
+        self._act_snap_menu = QAction("Snap a grilla", self)
+        self._act_snap_menu.setShortcut(QKeySequence("F9"))
+        self._act_snap_menu.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
+        self._act_snap_menu.setCheckable(True)
+        self._act_snap_menu.setChecked(True)
+        self._act_snap_menu.toggled.connect(self._on_toggle_snap)
+        m_options.addAction(self._act_snap_menu)
+
         # --- Ayuda ---
         m_help = mb.addMenu("A&yuda")
 
@@ -399,6 +415,15 @@ class MainWindow(QMainWindow):
         self._act_loads.toggled.connect(self._on_toggle_loads)
         tb.addAction(self._act_loads)
 
+        tb.addSeparator()
+
+        self._act_snap = QAction("Snap", self)
+        self._act_snap.setToolTip("Activar/desactivar snap a grilla (F9)")
+        self._act_snap.setCheckable(True)
+        self._act_snap.setChecked(True)
+        self._act_snap.toggled.connect(self._on_toggle_snap)
+        tb.addAction(self._act_snap)
+
     # ------------------------------------------------------------------
     # Status bar
     # ------------------------------------------------------------------
@@ -448,9 +473,10 @@ class MainWindow(QMainWindow):
         e = len(self._model.elements)
         m = len(self._model.materials)
         s = len(self._model.sections)
+        snap = self._snap_mgr.status_text()
         return (
             f"Nodos: {n}  |  Elementos: {e}  |  Materiales: {m}  |  "
-            f"Secciones: {s}  |  Unidades: kN, m, C"
+            f"Secciones: {s}  |  {snap}  |  Unidades: kN, m, C"
         )
 
     # ------------------------------------------------------------------
@@ -787,6 +813,19 @@ class MainWindow(QMainWindow):
         self._viewport.display_model(self._model)
         state = "activadas" if checked else "desactivadas"
         self._console.log(f"Flechas de carga {state}.")
+
+    def _on_toggle_snap(self, checked: bool) -> None:
+        """Toggle snap a grilla."""
+        self._snap_mgr.enabled = checked
+        # Sincronizar toolbar y menú
+        self._act_snap.blockSignals(True)
+        self._act_snap.setChecked(checked)
+        self._act_snap.blockSignals(False)
+        self._act_snap_menu.blockSignals(True)
+        self._act_snap_menu.setChecked(checked)
+        self._act_snap_menu.blockSignals(False)
+        state = "activado" if checked else "desactivado"
+        self._console.log(f"Snap {state} (grilla: {self._snap_mgr.spacing})")
 
     def _on_viewport_pick(self, category: str, tag: int) -> None:
         """Maneja la selección de un objeto en el viewport."""

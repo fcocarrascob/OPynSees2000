@@ -67,6 +67,7 @@ class VTKViewport(QWidget):
         self._selected_tag: int | None = None
         self._selected_category: str | None = None
         self._drawing_mode = False
+        self._snap_mgr: "SnapManager | None" = None
 
     # ------------------------------------------------------------------
     # Setup
@@ -603,6 +604,10 @@ class VTKViewport(QWidget):
     def set_drawing_mode(self, active: bool) -> None:
         """Establece si el viewport está en modo dibujo."""
         self._drawing_mode = active
+
+    def set_snap_manager(self, mgr) -> None:
+        """Registra el snap manager para uso durante dibujo."""
+        self._snap_mgr = mgr
 
     def close(self) -> None:
         self.plotter.close()
