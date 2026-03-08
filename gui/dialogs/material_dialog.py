@@ -80,13 +80,13 @@ MATERIAL_PARAMS: dict[MaterialType, list[tuple[str, str, float]]] = {
     ],
 }
 
-# Densidades típicas por tipo de material [kg/m³]
+# Densidades típicas por tipo de material [t/m³] (sistema kN-m-s)
 _DEFAULT_DENSITIES: dict[str, float] = {
-    "Concrete": 2400.0,
-    "Steel": 7850.0,
-    "Hysteretic": 7850.0,
-    "ElasticPP": 7850.0,
-    "Elastic": 2400.0,
+    "Concrete": 2.4,
+    "Steel": 7.85,
+    "Hysteretic": 7.85,
+    "ElasticPP": 7.85,
+    "Elastic": 2.4,
 }
 
 
@@ -141,17 +141,18 @@ class MaterialDialog(QDialog):
 
         # --- Densidad (común a todos los tipos) ---
         self._density_spinbox = QDoubleSpinBox()
-        self._density_spinbox.setRange(0.0, 20000.0)
-        self._density_spinbox.setDecimals(1)
-        self._density_spinbox.setSingleStep(100.0)
-        self._density_spinbox.setSuffix(" kg/m³")
+        self._density_spinbox.setRange(0.0, 20.0)
+        self._density_spinbox.setDecimals(3)
+        self._density_spinbox.setSingleStep(0.1)
+        self._density_spinbox.setSuffix(" t/m³")
         self._density_spinbox.setToolTip(
             "Densidad del material para cálculo de peso propio.\n"
+            "Sistema de unidades: kN – m – s (masa en toneladas).\n"
             "Valores típicos:\n"
-            "• Concreto: 2400 kg/m³\n"
-            "• Acero: 7850 kg/m³\n"
-            "• Madera: 600-800 kg/m³\n"
-            "• Aluminio: 2700 kg/m³"
+            "• Concreto: 2.4 t/m³\n"
+            "• Acero: 7.85 t/m³\n"
+            "• Madera: 0.6–0.8 t/m³\n"
+            "• Aluminio: 2.7 t/m³"
         )
         if material:
             self._density_spinbox.setValue(material.density)

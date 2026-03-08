@@ -12,8 +12,8 @@ Steps 1–3 completados y commiteados. Estás en la branch `fix/sap2000-load-pat
 
 #### 4.1 — Reemplazar `script_generator.py` completo
 
-- [ ] Abrir `gui/core/script_generator.py`
-- [ ] Reemplazar el contenido **completo** del archivo con:
+- [x] Abrir `gui/core/script_generator.py`
+- [x] Reemplazar el contenido **completo** del archivo con:
 
 ```python
 """
@@ -460,7 +460,7 @@ def _element_command(tag: int, elem, model: StructuralModel) -> str:
 ---
 
 ### Step 4 Verification Checklist
-- [ ] No hay errores de import al ejecutar `python -c "from gui.core.script_generator import generate_script"`
+- [x] No hay errores de import al ejecutar `python -c "from gui.core.script_generator import generate_script"`
 - [ ] Generar script del modelo demo → verificar que aparece sección "MASAS NODALES"
 - [ ] Las masas calculadas son razonables:
   - Columna 3.5m, Área 0.16m², densidad 2400 kg/m³ → peso = 0.16 × 3.5 × 2400 = 1344 kg por columna

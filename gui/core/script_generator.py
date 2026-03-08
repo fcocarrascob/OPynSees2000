@@ -7,8 +7,6 @@ válido que usa openseespy.opensees para replicar el modelo completo.
 
 from __future__ import annotations
 
-from textwrap import dedent
-
 from gui.core.model_data import (
     ElementType,
     MaterialType,
@@ -127,6 +125,44 @@ def generate_script(model: StructuralModel, include_analysis: bool = False) -> s
             lines.append(_element_command(tag, elem, model))
         lines.append("")
 
+    # --- Masas nodales (auto-calculadas desde geometría + densidad) ---
+    has_self_weight = any(
+        p.self_weight_multiplier > 0 for p in model.load_patterns.values()
+    )
+    nodal_masses = _calculate_nodal_masses(model) if has_self_weight else {}
+
+    # Combinar masas calculadas con masas explícitas
+    all_mass_nodes: dict[int, float] = {}
+    for node_tag in sorted(model.nodes.keys()):
+        node = model.nodes[node_tag]
+        # Índice de DOF gravitacional: Z para 3D (idx 2), Y para 2D (idx 1)
+        grav_idx = 2 if model.ndm == 3 else 1
+        explicit_mass = 0.0
+        if node.mass and len(node.mass) > grav_idx:
+            explicit_mass = node.mass[grav_idx]
+        calc_mass = nodal_masses.get(node_tag, 0.0)
+        final_mass = max(explicit_mass, calc_mass)
+        if final_mass > 0:
+            all_mass_nodes[node_tag] = final_mass
+
+    if all_mass_nodes:
+        lines.append("# " + "=" * 58)
+        lines.append("# MASAS NODALES (auto-calculadas desde geometría + densidad)")
+        lines.append("# " + "=" * 58)
+        grav_idx = 2 if model.ndm == 3 else 1
+        for node_tag in sorted(all_mass_nodes.keys()):
+            mass_val = all_mass_nodes[node_tag]
+            # Asignar masa en DOFs traslacionales
+            mass_vec = [0.0] * model.ndf
+            for i in range(min(3, model.ndm)):
+                mass_vec[i] = mass_val
+            # Rotacionales: masa muy pequeña para estabilidad numérica
+            for i in range(model.ndm, model.ndf):
+                mass_vec[i] = 1e-9
+            mass_args = ", ".join(f"{m:.6f}" for m in mass_vec)
+            lines.append(f"ops.mass({node_tag}, {mass_args})")
+        lines.append("")
+
     # --- Patrones de carga y cargas ---
     if model.load_patterns:
         lines.append("# " + "=" * 58)
@@ -141,12 +177,28 @@ def generate_script(model: StructuralModel, include_analysis: bool = False) -> s
             )
             lines.append(f"ops.pattern('Plain', {pat_tag}, {ts_tag})")
 
+            # Cargas nodales explícitas
             for load in pat.loads:
                 args = (
                     f"{load.fx}, {load.fy}, {load.fz}, "
                     f"{load.mx}, {load.my}, {load.mz}"
                 )
                 lines.append(f"ops.load({load.node_tag}, {args})")
+
+            # Cargas gravitacionales por peso propio
+            if pat.self_weight_multiplier != 0.0 and all_mass_nodes:
+                lines.append(
+                    f"# Peso propio (factor = {pat.self_weight_multiplier})"
+                )
+                grav_idx = 2 if model.ndm == 3 else 1
+                for node_tag in sorted(all_mass_nodes.keys()):
+                    mass_val = all_mass_nodes[node_tag]
+                    grav_force = -mass_val * 9.81 * pat.self_weight_multiplier
+                    load_vec = [0.0] * model.ndf
+                    load_vec[grav_idx] = grav_force
+                    load_args = ", ".join(f"{v:.6f}" for v in load_vec)
+                    lines.append(f"ops.load({node_tag}, {load_args})")
+
             lines.append("")
 
     # --- Análisis estático básico (opcional) ---
@@ -174,6 +226,82 @@ def generate_script(model: StructuralModel, include_analysis: bool = False) -> s
     lines.append("")
 
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------
+# Cálculo de masa tributaria
+# ---------------------------------------------------------------
+
+def _calculate_nodal_masses(model: StructuralModel) -> dict[int, float]:
+    """
+    Calcula masa tributaria por nodo desde elementos conectados.
+    Usa densidad definida en Material asociado a cada sección.
+
+    Returns
+    -------
+    dict[int, float]
+        Diccionario {node_tag: masa_tributaria [kg]}.
+    """
+    nodal_masses: dict[int, float] = {tag: 0.0 for tag in model.nodes.keys()}
+
+    for elem in model.elements.values():
+        section = model.sections.get(elem.section_tag) if elem.section_tag else None
+        if not section:
+            continue
+
+        # Obtener densidad del material asociado
+        density = 0.0
+        if section.material_tag and section.material_tag in model.materials:
+            material = model.materials[section.material_tag]
+            density = material.density
+
+        if density == 0.0:
+            continue
+
+        # Nodos del elemento
+        elem_nodes = [elem.node_i, elem.node_j]
+        if elem.node_k is not None:
+            elem_nodes.append(elem.node_k)
+        if elem.node_l is not None:
+            elem_nodes.append(elem.node_l)
+
+        # Filtrar solo nodos que existen en el modelo
+        elem_nodes = [n for n in elem_nodes if n in model.nodes]
+        if not elem_nodes:
+            continue
+
+        # Calcular peso según tipo de elemento
+        et = elem.elem_type
+        if et in (
+            ElementType.ELASTIC_BEAM_COLUMN,
+            ElementType.FORCE_BEAM_COLUMN,
+            ElementType.DISP_BEAM_COLUMN,
+            ElementType.TRUSS,
+            ElementType.COROT_TRUSS,
+        ):
+            # Frame/Truss: peso = A × L × densidad
+            node_i = model.nodes.get(elem.node_i)
+            node_j = model.nodes.get(elem.node_j)
+            if not node_i or not node_j:
+                continue
+            length = (
+                (node_j.x - node_i.x) ** 2
+                + (node_j.y - node_i.y) ** 2
+                + (node_j.z - node_i.z) ** 2
+            ) ** 0.5
+            area = section.params.get("A", 0.0)
+            elem_mass = area * length * density  # [kg]
+
+            mass_per_node = elem_mass / len(elem_nodes)
+            for node_tag in elem_nodes:
+                nodal_masses[node_tag] += mass_per_node
+
+        # Shell elements (futuro: requiere parámetro thickness)
+        # elif et == ElementType.SHELL_MITC4:
+        #     thickness = section.params.get("thickness", 0.0)
+        #     ...
+
+    return nodal_masses
 
 
 # ---------------------------------------------------------------
@@ -257,7 +385,6 @@ def _element_command(tag: int, elem, model: StructuralModel) -> str:
     et = elem.elem_type
 
     if et == ElementType.ELASTIC_BEAM_COLUMN:
-        # elasticBeamColumn requiere parámetros de sección directos
         sec = model.sections.get(elem.section_tag) if elem.section_tag else None
         if sec and sec.sec_type == SectionType.ELASTIC_3D:
             p = sec.params

@@ -114,7 +114,7 @@ class Material:
     name: str
     mat_type: MaterialType
     params: dict = field(default_factory=dict)
-    density: float = 0.0  # Densidad [kg/m³] para cálculo de peso propio
+    density: float = 0.0  # Densidad [t/m³] para cálculo de peso propio (sistema kN-m-s)
     # params varía según tipo. Ej: Steel02 → {Fy, E0, b, R0, cR1, cR2}
 
     def to_dict(self) -> dict:
@@ -463,7 +463,7 @@ class StructuralModel:
             tag=1, name="Concreto f'c=28 MPa",
             mat_type=MaterialType.ELASTIC,
             params={"E": 24_821_000.0},
-            density=2400.0,
+            density=2.4,
         )
 
         # --- Secciones con material_tag ---
