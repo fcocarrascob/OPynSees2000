@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QDoubleSpinBox,
     QFormLayout,
     QGroupBox,
     QLineEdit,
@@ -33,9 +34,10 @@ class LoadPatternDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Editar patrón" if pattern else "Nuevo patrón de carga")
-        self.setMinimumWidth(380)
+        self.setMinimumWidth(420)
 
         self._editing = pattern
+        is_dead = pattern is not None and pattern.tag == 1
 
         layout = QVBoxLayout(self)
 
@@ -60,6 +62,31 @@ class LoadPatternDialog(QDialog):
                 self._ts_combo.setCurrentIndex(idx)
         form.addRow("Time Series:", self._ts_combo)
 
+        # --- Multiplicador de peso propio ---
+        self._sw_spinbox = QDoubleSpinBox()
+        self._sw_spinbox.setRange(-5.0, 5.0)
+        self._sw_spinbox.setDecimals(2)
+        self._sw_spinbox.setSingleStep(0.1)
+        self._sw_spinbox.setValue(
+            pattern.self_weight_multiplier if pattern else 0.0
+        )
+
+        if is_dead:
+            # DEAD: multiplicador bloqueado en 1.0
+            self._sw_spinbox.setValue(1.0)
+            self._sw_spinbox.setReadOnly(True)
+            self._sw_spinbox.setEnabled(False)
+            self._sw_spinbox.setToolTip(
+                "El patrón DEAD siempre tiene multiplicador 1.0 (no editable)"
+            )
+        else:
+            self._sw_spinbox.setToolTip(
+                "Factor peso propio: 1.0 = completo, 0.0 = sin peso.\n"
+                "Permite factorización (ej: 1.2 para sobrecarga)."
+            )
+
+        form.addRow("Mult. peso propio:", self._sw_spinbox)
+
         layout.addWidget(grp)
 
         # Botones
@@ -80,9 +107,12 @@ class LoadPatternDialog(QDialog):
     def get_pattern(self) -> LoadPattern:
         """Retorna el patrón configurado."""
         tag = int(self._tag_edit.text())
+        # Forzar mult=1.0 para DEAD (defensa en profundidad)
+        mult = 1.0 if tag == 1 else self._sw_spinbox.value()
         return LoadPattern(
             tag=tag,
             name=self._name_edit.text().strip(),
             time_series_type=self._ts_combo.currentText(),
+            self_weight_multiplier=mult,
             loads=self._editing.loads if self._editing else [],
         )

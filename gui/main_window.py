@@ -192,7 +192,8 @@ class MainWindow(QMainWindow):
 
         act_delete = QAction("Eliminar selección", self)
         act_delete.setShortcut(QKeySequence.StandardKey.Delete)
-        act_delete.setEnabled(False)
+        act_delete.setEnabled(True)
+        act_delete.triggered.connect(self._on_delete_selected)
         m_edit.addAction(act_delete)
         self._act_delete = act_delete
 
@@ -772,6 +773,39 @@ class MainWindow(QMainWindow):
     def _on_property_changed(self, category: str, tag: int) -> None:
         """Llamado cuando el properties panel edita una propiedad."""
         self._refresh_all()
+
+    def _on_delete_selected(self) -> None:
+        """Elimina el ítem seleccionado en el árbol."""
+        current = self._tree.currentItem()
+        if current is None:
+            return
+        category = current.data(0, 100)
+        tag = current.data(0, 101)
+        if category is None or tag is None:
+            return
+
+        # Prevenir eliminación del patrón DEAD
+        if category == "load_patterns" and tag == 1:
+            self._console.log_error(
+                "El patrón DEAD (tag=1) es obligatorio y no puede eliminarse."
+            )
+            return
+
+        mapping = {
+            "nodes": self._model.nodes,
+            "materials": self._model.materials,
+            "sections": self._model.sections,
+            "geom_transfs": self._model.geom_transfs,
+            "elements": self._model.elements,
+            "load_patterns": self._model.load_patterns,
+        }
+        container = mapping.get(category)
+        if container is None or tag not in container:
+            return
+
+        container.pop(tag)
+        self._refresh_all()
+        self._console.log(f"Eliminado: {category} → tag {tag}")
 
     # ------------------------------------------------------------------
     # Override close

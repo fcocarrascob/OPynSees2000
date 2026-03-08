@@ -12,8 +12,8 @@ Steps 1, 1.5, 1.6 y 2 completados y commiteados. Estás en la branch `fix/sap200
 
 #### 3.1 — Reemplazar `load_pattern_dialog.py` completo
 
-- [ ] Abrir `gui/dialogs/load_pattern_dialog.py`
-- [ ] Reemplazar el contenido **completo** del archivo con:
+- [x] Abrir `gui/dialogs/load_pattern_dialog.py`
+- [x] Reemplazar el contenido **completo** del archivo con:
 
 ```python
 """
@@ -140,10 +140,10 @@ class LoadPatternDialog(QDialog):
 
 El modelo actual no tiene un botón explícito de "Eliminar patrón de carga" como acción separada, pero tiene la acción genérica `_act_delete` ("Eliminar selección") en el menú Editar. Para prevenir la eliminación de DEAD, necesitamos agregar lógica al eliminar ítems del árbol.
 
-- [ ] Abrir `gui/main_window.py`
-- [ ] Localizar la acción `_act_delete` (línea ~183). Actualmente está deshabilitada (`setEnabled(False)`). Necesitamos implementar la eliminación con protección DEAD.
+- [x] Abrir `gui/main_window.py`
+- [x] Localizar la acción `_act_delete` (línea ~183). Actualmente está deshabilitada (`setEnabled(False)`). Necesitamos implementar la eliminación con protección DEAD.
 
-- [ ] Agregar el siguiente método **nuevo** al final de la sección de Slots (antes de `closeEvent`):
+- [x] Agregar el siguiente método **nuevo** al final de la sección de Slots (antes de `closeEvent`):
 
 **Buscar este bloque (al final de los slots, antes de closeEvent):**
 ```python
@@ -200,7 +200,7 @@ El modelo actual no tiene un botón explícito de "Eliminar patrón de carga" co
     # ------------------------------------------------------------------
 ```
 
-- [ ] Ahora conectar la acción `_act_delete` y habilitarla. Localizar estas líneas dentro de `_build_menubar`:
+- [x] Ahora conectar la acción `_act_delete` y habilitarla. Localizar estas líneas dentro de `_build_menubar`:
 
 **Buscar:**
 ```python
@@ -224,7 +224,7 @@ El modelo actual no tiene un botón explícito de "Eliminar patrón de carga" co
 ---
 
 ### Step 3 Verification Checklist
-- [ ] No hay errores de import al ejecutar `python -c "from gui.dialogs.load_pattern_dialog import LoadPatternDialog"`
+- [x] No hay errores de import al ejecutar `python -c "from gui.dialogs.load_pattern_dialog import LoadPatternDialog"`
 - [ ] Al crear nuevo patrón de carga → campo "Mult. peso propio:" visible, valor por defecto 0.0
 - [ ] Al editar patrón DEAD → multiplicador muestra 1.0 y está **deshabilitado** (gris)
 - [ ] Al crear patrón con mult=0.5 → `get_pattern().self_weight_multiplier == 0.5`
