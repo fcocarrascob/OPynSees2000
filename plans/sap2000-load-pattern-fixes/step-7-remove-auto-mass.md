@@ -12,8 +12,8 @@ Steps 1–6 completados y commiteados. Estás en la branch `fix/sap2000-load-pat
 
 #### 7.1 — Modificar `_modal_analysis_commands` en `analysis_runner.py`
 
-- [ ] Abrir `gui/core/analysis_runner.py`
-- [ ] Localizar la función `_modal_analysis_commands` (línea ~75) y reemplazar **completa** con:
+- [x] Abrir `gui/core/analysis_runner.py`
+- [x] Localizar la función `_modal_analysis_commands` (línea ~75) y reemplazar **completa** con:
 
 **Buscar:**
 ```python
@@ -81,7 +81,7 @@ def _modal_analysis_commands(
 ---
 
 ### Step 7 Verification Checklist
-- [ ] No hay errores de import al ejecutar `python -c "from gui.core.analysis_runner import run_modal_analysis"`
+- [x] No hay errores de import al ejecutar `python -c "from gui.core.analysis_runner import run_modal_analysis"`
 - [ ] **Modelo demo (DEAD + densidad):** Ejecutar análisis modal → completado exitosamente con períodos realistas
 - [ ] **Modelo sin DEAD ni masas:** Ejecutar análisis modal → bloqueado por validación (Step 5), nunca llega a `analysis_runner`
 - [ ] Verificar que el log de análisis **NO** muestra "Masas unitarias automáticas"

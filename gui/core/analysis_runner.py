@@ -89,40 +89,19 @@ def _static_analysis_commands(
 def _modal_analysis_commands(
     model: StructuralModel, n_modes: int, system: str
 ) -> str:
-    # Nodes without mass that are not fully fixed
-    nodes_needing_mass = [
-        tag for tag, node in model.nodes.items()
-        if not node.is_fixed and not node.mass
-    ]
-
-    # Mass pattern: translational DOFs = 1.0, rotational = 0
-    if model.ndf == 6:
-        mass_str = "1.0, 1.0, 1.0, 1e-9, 1e-9, 1e-9"
-    elif model.ndf == 3:
-        mass_str = "1.0, 1.0, 1e-9"
-    else:
-        mass_str = ", ".join(["1.0"] * model.ndf)
+    # Las masas se calculan automáticamente desde el patrón DEAD en script_generator.
+    # La validación pre-análisis (Step 5) asegura que existe DEAD o masas explícitas.
 
     lines = [
         "",
         "# " + "=" * 58,
         "# ANÁLISIS MODAL",
         "# " + "=" * 58,
-    ]
-
-    # Auto-assign unit mass if no masses defined
-    if nodes_needing_mass:
-        lines.append("# Masas unitarias automáticas (nodos sin masa definida)")
-        for tag in nodes_needing_mass:
-            lines.append(f"ops.mass({tag}, {mass_str})")
-        lines.append("")
-
-    lines.extend([
         f"ops.system('{system}')",
         "ops.numberer('RCM')",
         "ops.constraints('Plain')",
         f"eigenvalues = ops.eigen({n_modes})",
-    ])
+    ]
     lines.extend([
         "import math",
         "import json",
