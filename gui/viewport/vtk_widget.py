@@ -41,6 +41,11 @@ COLOR_LOAD_MOMENT = "#7B1FA2"     # morado — momentos
 COLOR_HIGHLIGHT = "#FFD600"       # amarillo — selección
 COLOR_LABEL = "#212121"           # negro/gris oscuro
 
+# Nombres de actores de preview
+_PREVIEW_SNAP = "_preview_snap"
+
+COLOR_SNAP_INDICATOR = "#4CAF50"  # verde — snap indicator
+
 
 class VTKViewport(QWidget):
     """Widget con el viewport 3D de PyVista."""
@@ -744,6 +749,35 @@ class VTKViewport(QWidget):
             x, y, z = self._pending_move_coords
             self.drawing_mouse_move.emit(x, y, z)
             self._pending_move_coords = None
+
+    # ------------------------------------------------------------------
+    # Preview rendering (snap indicator)
+    # ------------------------------------------------------------------
+
+    def show_snap_indicator(self, coords: tuple[float, float, float]) -> None:
+        """Muestra un indicador (cruz) en el punto de snap."""
+        self.plotter.remove_actor(_PREVIEW_SNAP, render=False)
+        size = 0.15
+        x, y, z = coords
+        points = np.array([
+            [x - size, y, z], [x + size, y, z],
+            [x, y - size, z], [x, y + size, z],
+            [x, y, z - size], [x, y, z + size],
+        ], dtype=float)
+        lines = np.array([2, 0, 1, 2, 2, 3, 2, 4, 5])
+        mesh = pv.PolyData(points, lines=lines)
+        self.plotter.add_mesh(
+            mesh,
+            color=COLOR_SNAP_INDICATOR,
+            line_width=2,
+            name=_PREVIEW_SNAP,
+        )
+        self.plotter.render()
+
+    def clear_snap_indicator(self) -> None:
+        """Elimina el actor de snap indicator."""
+        self.plotter.remove_actor(_PREVIEW_SNAP, render=False)
+        self.plotter.render()
 
     def eventFilter(self, obj, event) -> bool:
         """Intercepta eventos del plotter para capturar clics en modo dibujo."""

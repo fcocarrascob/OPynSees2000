@@ -510,6 +510,7 @@ class MainWindow(QMainWindow):
         if mode == InteractionMode.SELECT:
             self._viewport.enable_picking(self._model)
             self._viewport.set_drawing_mode(False)
+            self._viewport.clear_snap_indicator()
             self._update_statusbar()
         else:
             self._viewport.disable_picking()
@@ -550,8 +551,11 @@ class MainWindow(QMainWindow):
         self._console.log(f"Drawing click: ({x:.2f}, {y:.2f}, {z:.2f})")
 
     def _on_drawing_mouse_move(self, x: float, y: float, z: float) -> None:
-        """Maneja movimiento en modo dibujo — placeholder para Step 5."""
-        pass  # Preview updates will be added in Step 5
+        """Actualiza snap indicator durante movimiento del mouse en modo dibujo."""
+        if self._snap_mgr and self._snap_mgr.enabled:
+            self._viewport.show_snap_indicator((x, y, z))
+        else:
+            self._viewport.clear_snap_indicator()
 
     def _on_new_model(self) -> None:
         self._model.clear()
