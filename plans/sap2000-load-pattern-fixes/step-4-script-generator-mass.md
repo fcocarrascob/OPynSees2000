@@ -1,3 +1,21 @@
+# Step 4: Actualizar Generador de Scripts con Cálculo de Masa y Peso Propio
+
+## Goal
+Modificar `script_generator.py` para calcular masa tributaria por nodo desde elementos conectados (usando densidad del material), generar comandos `ops.mass()`, y generar cargas gravitacionales según `self_weight_multiplier`.
+
+## Prerequisites
+Steps 1–3 completados y commiteados. Estás en la branch `fix/sap2000-load-pattern-validation`.
+
+---
+
+### Step-by-Step Instructions
+
+#### 4.1 — Reemplazar `script_generator.py` completo
+
+- [x] Abrir `gui/core/script_generator.py`
+- [x] Reemplazar el contenido **completo** del archivo con:
+
+```python
 """
 Generador de scripts OpenSeesPy.
 
@@ -403,7 +421,6 @@ def _element_command(tag: int, elem, model: StructuralModel) -> str:
                 f"{p.get('A', 0)}, {p.get('E', 0)}, {p.get('Iz', 0)}, "
                 f"{elem.transf_tag})"
             )
-        # Fallback: referencia a sección
         return (
             f"ops.element('elasticBeamColumn', {tag}, "
             f"{elem.node_i}, {elem.node_j}, "
@@ -438,3 +455,36 @@ def _element_command(tag: int, elem, model: StructuralModel) -> str:
         )
 
     return f"# Elemento tipo '{et.value}' (tag={tag}) — no soportado"
+```
+
+---
+
+### Step 4 Verification Checklist
+- [x] No hay errores de import al ejecutar `python -c "from gui.core.script_generator import generate_script"`
+- [ ] Generar script del modelo demo → verificar que aparece sección "MASAS NODALES"
+- [ ] Las masas calculadas son razonables:
+  - Columna 3.5m, Área 0.16m², densidad 2400 kg/m³ → peso = 0.16 × 3.5 × 2400 = 1344 kg por columna
+  - Cada nodo recibe mitad de cada elemento conectado
+- [ ] Verificar que aparece sección "Peso propio (factor = 1.0)" dentro del patrón DEAD
+- [ ] Las cargas gravitacionales tienen signo negativo en el DOF correcto (Z para 3D)
+- [ ] Nodos fijos (nivel 0) **sí** reciben masa y carga gravitacional (correctamente)
+- [ ] Crear patrón adicional con mult=0 → no genera cargas gravitacionales para ese patrón
+- [ ] Script generado con "Exportar script OpenSeesPy..." se ve correcto en el preview
+- [ ] La función `_calculate_nodal_masses` retorna dict vacío si no hay densidades definidas
+
+---
+
+### Step 4 STOP & COMMIT
+**STOP & COMMIT:** Agent must stop here and wait for the user to test, stage, and commit the change.
+
+Mensaje de commit sugerido:
+```
+feat(script): auto-calculate nodal masses and self-weight loads
+
+- _calculate_nodal_masses: compute tributary mass per node from element
+  geometry, section area, and material density
+- Generate ops.mass() commands for nodes with calculated or explicit mass
+- Generate gravitational loads (mass × 9.81 × multiplier) for patterns
+  with self_weight_multiplier > 0
+- Gravity direction: -Z for 3D, -Y for 2D
+```

@@ -1,3 +1,21 @@
+# Step 1.5: Actualizar Diálogo de Material con Campo Densidad
+
+## Goal
+Agregar un campo `QDoubleSpinBox` para configurar la densidad del material en el diálogo de creación/edición, con valores por defecto según el tipo de material.
+
+## Prerequisites
+Step 1 completado y commiteado. Estás en la branch `fix/sap2000-load-pattern-validation`.
+
+---
+
+### Step-by-Step Instructions
+
+#### 1.5.1 — Reemplazar `material_dialog.py` completo
+
+- [x] Abrir `gui/dialogs/material_dialog.py`
+- [x] Reemplazar el contenido **completo** del archivo con:
+
+```python
 """
 Diálogo para crear / editar materiales uniaxiales.
 
@@ -80,13 +98,13 @@ MATERIAL_PARAMS: dict[MaterialType, list[tuple[str, str, float]]] = {
     ],
 }
 
-# Densidades típicas por tipo de material [t/m³] (sistema kN-m-s)
+# Densidades típicas por tipo de material [kg/m³]
 _DEFAULT_DENSITIES: dict[str, float] = {
-    "Concrete": 2.4,
-    "Steel": 7.85,
-    "Hysteretic": 7.85,
-    "ElasticPP": 7.85,
-    "Elastic": 2.4,
+    "Concrete": 2400.0,
+    "Steel": 7850.0,
+    "Hysteretic": 7850.0,
+    "ElasticPP": 7850.0,
+    "Elastic": 2400.0,
 }
 
 
@@ -141,18 +159,17 @@ class MaterialDialog(QDialog):
 
         # --- Densidad (común a todos los tipos) ---
         self._density_spinbox = QDoubleSpinBox()
-        self._density_spinbox.setRange(0.0, 20.0)
-        self._density_spinbox.setDecimals(3)
-        self._density_spinbox.setSingleStep(0.1)
-        self._density_spinbox.setSuffix(" t/m³")
+        self._density_spinbox.setRange(0.0, 20000.0)
+        self._density_spinbox.setDecimals(1)
+        self._density_spinbox.setSingleStep(100.0)
+        self._density_spinbox.setSuffix(" kg/m³")
         self._density_spinbox.setToolTip(
             "Densidad del material para cálculo de peso propio.\n"
-            "Sistema de unidades: kN – m – s (masa en toneladas).\n"
             "Valores típicos:\n"
-            "• Concreto: 2.4 t/m³\n"
-            "• Acero: 7.85 t/m³\n"
-            "• Madera: 0.6–0.8 t/m³\n"
-            "• Aluminio: 2.7 t/m³"
+            "• Concreto: 2400 kg/m³\n"
+            "• Acero: 7850 kg/m³\n"
+            "• Madera: 600-800 kg/m³\n"
+            "• Aluminio: 2700 kg/m³"
         )
         if material:
             self._density_spinbox.setValue(material.density)
@@ -260,3 +277,30 @@ class MaterialDialog(QDialog):
         return Material(
             tag=tag, name=name, mat_type=mat_type, params=params, density=density
         )
+```
+
+---
+
+### Step 1.5 Verification Checklist
+- [x] No hay errores de import al ejecutar `python -c "from gui.dialogs.material_dialog import MaterialDialog"`
+- [ ] Al abrir "Definir → Materiales", el diálogo muestra campo "Densidad:" con sufijo "kg/m³"
+- [ ] Crear material tipo Elastic → densidad default = 2400.0
+- [ ] Cambiar tipo a Steel02 → densidad cambia automáticamente a 7850.0
+- [ ] Cambiar tipo a Concrete01 → densidad cambia a 2400.0
+- [ ] Editar material existente → densidad muestra el valor guardado (no el default)
+- [ ] Crear material con densidad 3000 → guardar → editar → densidad persiste en 3000
+- [ ] `get_material()` retorna Material con campo `density` correcto
+
+---
+
+### Step 1.5 STOP & COMMIT
+**STOP & COMMIT:** Agent must stop here and wait for the user to test, stage, and commit the change.
+
+Mensaje de commit sugerido:
+```
+feat(ui): add density field to material dialog
+
+- QDoubleSpinBox for density [kg/m³] in material creation/edit dialog
+- Auto-suggest density based on material type (Concrete: 2400, Steel: 7850)
+- Preserves user-edited density when switching types
+```
