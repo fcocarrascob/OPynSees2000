@@ -331,21 +331,35 @@ class AnalysisResult:
 # Contenedor principal del modelo
 # ---------------------------------------------------------------------------
 
-@dataclass
 class StructuralModel:
     """
     Contenedor central de todos los objetos del modelo.
     Es el 'documento' que la GUI edita.
     """
-    ndm: int = 3                                # dimensiones del modelo
-    ndf: int = 6                                # grados de libertad por nodo
 
-    nodes: dict[int, Node] = field(default_factory=dict)
-    materials: dict[int, Material] = field(default_factory=dict)
-    sections: dict[int, Section] = field(default_factory=dict)
-    geom_transfs: dict[int, GeomTransf] = field(default_factory=dict)
-    elements: dict[int, Element] = field(default_factory=dict)
-    load_patterns: dict[int, LoadPattern] = field(default_factory=dict)
+    def __init__(
+        self,
+        ndm: int = 3,
+        ndf: int = 6,
+        auto_create_dead: bool = True,
+    ) -> None:
+        self.ndm = ndm
+        self.ndf = ndf
+        self.nodes: dict[int, Node] = {}
+        self.materials: dict[int, Material] = {}
+        self.sections: dict[int, Section] = {}
+        self.geom_transfs: dict[int, GeomTransf] = {}
+        self.elements: dict[int, Element] = {}
+        self.load_patterns: dict[int, LoadPattern] = {}
+
+        if auto_create_dead:
+            self.load_patterns[1] = LoadPattern(
+                tag=1,
+                name="DEAD",
+                time_series_type="Linear",
+                self_weight_multiplier=1.0,
+                loads=[],
+            )
 
     # ------------------------------------------------------------------
     # Helpers
@@ -384,8 +398,8 @@ class StructuralModel:
 
     @classmethod
     def from_dict(cls, d: dict) -> "StructuralModel":
-        """Crea un modelo desde diccionario."""
-        model = cls(ndm=d.get("ndm", 3), ndf=d.get("ndf", 6))
+        """Crea un modelo desde diccionario (NO auto-crear DEAD al cargar)."""
+        model = cls(ndm=d.get("ndm", 3), ndf=d.get("ndf", 6), auto_create_dead=False)
         for k, v in d.get("nodes", {}).items():
             model.nodes[int(k)] = Node.from_dict(v)
         for k, v in d.get("materials", {}).items():
@@ -401,13 +415,21 @@ class StructuralModel:
         return model
 
     def clear(self) -> None:
-        """Borra todo el modelo."""
+        """Borra todo el modelo y re-crea DEAD."""
         self.nodes.clear()
         self.materials.clear()
         self.sections.clear()
         self.geom_transfs.clear()
         self.elements.clear()
         self.load_patterns.clear()
+        # Re-crear DEAD obligatorio
+        self.load_patterns[1] = LoadPattern(
+            tag=1,
+            name="DEAD",
+            time_series_type="Linear",
+            self_weight_multiplier=1.0,
+            loads=[],
+        )
 
     # ------------------------------------------------------------------
     # Demo: pórtico 3D  2 vanos × 2 vanos × 2 pisos
@@ -416,7 +438,8 @@ class StructuralModel:
     @classmethod
     def create_demo(cls) -> "StructuralModel":
         """Crea un pórtico 3D de demostración."""
-        model = cls(ndm=3, ndf=6)
+        model = cls(ndm=3, ndf=6, auto_create_dead=True)
+        # DEAD ya fue creado en __init__
 
         # --- Parámetros geométricos ---
         spans_x = [0.0, 5.0, 10.0]         # 2 vanos en X de 5 m
@@ -435,25 +458,30 @@ class StructuralModel:
                     node_grid[(ix, iy, iz)] = tag
                     tag += 1
 
-        # --- Material & Sección demo ---
+        # --- Material con densidad ---
         model.materials[1] = Material(
             tag=1, name="Concreto f'c=28 MPa",
             mat_type=MaterialType.ELASTIC,
-            params={"E": 24_821_000.0}  # kN/m²
+            params={"E": 24_821_000.0},
+            density=2400.0,
         )
+
+        # --- Secciones con material_tag ---
         model.sections[1] = Section(
             tag=1, name="Columna 40×40",
             sec_type=SectionType.ELASTIC_3D,
             params={"A": 0.16, "E": 24_821_000.0,
                     "Iz": 2.1333e-3, "Iy": 2.1333e-3,
-                    "G": 10_342_000.0, "J": 3.6053e-3}
+                    "G": 10_342_000.0, "J": 3.6053e-3},
+            material_tag=1,
         )
         model.sections[2] = Section(
             tag=2, name="Viga 30×50",
             sec_type=SectionType.ELASTIC_3D,
             params={"A": 0.15, "E": 24_821_000.0,
                     "Iz": 3.125e-3, "Iy": 1.125e-3,
-                    "G": 10_342_000.0, "J": 3.516e-3}
+                    "G": 10_342_000.0, "J": 3.516e-3},
+            material_tag=1,
         )
 
         # --- Transformaciones ---

@@ -12,8 +12,8 @@ Steps 1, 1.5, y 1.6 completados y commiteados. Estás en la branch `fix/sap2000-
 
 #### 2.1 — Modificar `StructuralModel.__init__` y `create_demo` en `model_data.py`
 
-- [ ] Abrir `gui/core/model_data.py`
-- [ ] Localizar la clase `StructuralModel` (línea ~295) y reemplazar el `__init__` implícito del dataclass y los métodos `from_dict`, `clear` y `create_demo`.
+- [x] Abrir `gui/core/model_data.py`
+- [x] Localizar la clase `StructuralModel` (línea ~295) y reemplazar el `__init__` implícito del dataclass y los métodos `from_dict`, `clear` y `create_demo`.
 
 **Buscar el inicio de la clase:**
 ```python
@@ -67,7 +67,7 @@ class StructuralModel:
             )
 ```
 
-- [ ] Localizar el método `from_dict` y reemplazar **completo** con:
+- [x] Localizar el método `from_dict` y reemplazar **completo** con:
 
 ```python
     @classmethod
@@ -89,7 +89,7 @@ class StructuralModel:
         return model
 ```
 
-- [ ] Localizar el método `clear` y reemplazar **completo** con:
+- [x] Localizar el método `clear` y reemplazar **completo** con:
 
 ```python
     def clear(self) -> None:
@@ -110,7 +110,7 @@ class StructuralModel:
         )
 ```
 
-- [ ] Localizar el método `create_demo` y reemplazar **completo** con:
+- [x] Localizar el método `create_demo` y reemplazar **completo** con:
 
 ```python
     @classmethod
@@ -222,25 +222,25 @@ class StructuralModel:
 
 #### 2.2 — Actualizar `_on_new_model` en `main_window.py`
 
-- [ ] Abrir `gui/main_window.py`
-- [ ] El método `_on_new_model` ya llama `self._model.clear()`, que ahora re-crea DEAD automáticamente. **No requiere cambios.**
+- [x] Abrir `gui/main_window.py`
+- [x] El método `_on_new_model` ya llama `self._model.clear()`, que ahora re-crea DEAD automáticamente. **No requiere cambios.**
 
 #### 2.3 — Verificar que `_on_open` usa la nueva firma de `load_project`
 
-- [ ] Verificar que el método `_on_open` que modificamos en Step 1 maneja el tuple `(model, notification)` correctamente. Ya fue actualizado en Step 1.
+- [x] Verificar que el método `_on_open` que modificamos en Step 1 maneja el tuple `(model, notification)` correctamente. Ya fue actualizado en Step 1.
 
 ---
 
 ### Step 2 Verification Checklist
-- [ ] No hay errores de import al ejecutar `python -c "from gui.core.model_data import StructuralModel"`
-- [ ] `StructuralModel()` crea modelo con `load_patterns = {1: LoadPattern(tag=1, name='DEAD', self_weight_multiplier=1.0)}`
-- [ ] `StructuralModel(auto_create_dead=False)` crea modelo con `load_patterns = {}`
-- [ ] `StructuralModel.from_dict({"ndm":3,"ndf":6})` crea modelo **sin** DEAD (auto_create_dead=False)
-- [ ] `model.clear()` limpia todo y re-crea DEAD automáticamente
-- [ ] `StructuralModel.create_demo()` incluye DEAD con mult=1.0, material con density=2400, secciones con material_tag=1
+- [x] No hay errores de import al ejecutar `python -c "from gui.core.model_data import StructuralModel"`
+- [x] `StructuralModel()` crea modelo con `load_patterns = {1: LoadPattern(tag=1, name='DEAD', self_weight_multiplier=1.0)}`
+- [x] `StructuralModel(auto_create_dead=False)` crea modelo con `load_patterns = {}`
+- [x] `StructuralModel.from_dict({"ndm":3,"ndf":6})` crea modelo **sin** DEAD (auto_create_dead=False)
+- [x] `model.clear()` limpia todo y re-crea DEAD automáticamente
+- [x] `StructuralModel.create_demo()` incluye DEAD con mult=1.0, material con density=2400, secciones con material_tag=1
 - [ ] Al abrir la GUI → modelo demo muestra "DEAD" en el árbol de patrones de carga
 - [ ] Menú Archivo → Nuevo modelo → árbol muestra "DEAD" como único patrón
-- [ ] Al hacer `next_pattern_tag()` en modelo nuevo → retorna 2 (DEAD usa tag=1)
+- [x] Al hacer `next_pattern_tag()` en modelo nuevo → retorna 2 (DEAD usa tag=1)
 
 ---
 
