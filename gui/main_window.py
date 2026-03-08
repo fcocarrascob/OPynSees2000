@@ -110,6 +110,9 @@ class MainWindow(QMainWindow):
         self._properties.property_changed.connect(self._on_property_changed)
         self._undo_mgr.state_changed.connect(self._update_undo_actions)
 
+        self._viewport.drawing_click.connect(self._on_drawing_click)
+        self._viewport.drawing_mouse_move.connect(self._on_drawing_mouse_move)
+
         # Capturar teclado del viewport VTK (para Escape, etc.)
         self._viewport.plotter.installEventFilter(self)
 
@@ -541,6 +544,14 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
     # Slots
     # ------------------------------------------------------------------
+
+    def _on_drawing_click(self, x: float, y: float, z: float) -> None:
+        """Maneja clic en modo dibujo — placeholder para Steps 6-8."""
+        self._console.log(f"Drawing click: ({x:.2f}, {y:.2f}, {z:.2f})")
+
+    def _on_drawing_mouse_move(self, x: float, y: float, z: float) -> None:
+        """Maneja movimiento en modo dibujo — placeholder para Step 5."""
+        pass  # Preview updates will be added in Step 5
 
     def _on_new_model(self) -> None:
         self._model.clear()

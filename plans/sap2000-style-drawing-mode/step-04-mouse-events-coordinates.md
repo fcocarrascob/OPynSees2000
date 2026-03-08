@@ -12,20 +12,20 @@ Steps 1–3 must be completed and committed.
 
 #### 4.1 — Add new signals and state to `VTKViewport`
 
-- [ ] Open `gui/viewport/vtk_widget.py`
-- [ ] Add a new import at the top of the file, with the existing imports from `PySide6.QtCore`:
+- [x] Open `gui/viewport/vtk_widget.py`
+- [x] Add a new import at the top of the file, with the existing imports from `PySide6.QtCore`:
 
 ```python
 from PySide6.QtCore import Signal, Qt, QTimer
 ```
 
-- [ ] Add the `QApplication` import to the PySide6.QtWidgets import:
+- [x] Add the `QApplication` import to the PySide6.QtWidgets import:
 
 ```python
 from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
 ```
 
-- [ ] Add new signals to the `VTKViewport` class, after the existing `item_picked` signal:
+- [x] Add new signals to the `VTKViewport` class, after the existing `item_picked` signal:
 
 ```python
     # Señales para modo dibujo
@@ -33,7 +33,7 @@ from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
     drawing_mouse_move = Signal(float, float, float)   # movimiento con coords mundo (snapped)
 ```
 
-- [ ] In `__init__`, after `self._snap_mgr`, add:
+- [x] In `__init__`, after `self._snap_mgr`, add:
 
 ```python
         # Working plane Z para proyección de rayos
@@ -49,7 +49,7 @@ from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
 
 #### 4.2 — Implement screen-to-world coordinate conversion
 
-- [ ] Add these methods to `VTKViewport`, after `set_snap_manager`:
+- [x] Add these methods to `VTKViewport`, after `set_snap_manager`:
 
 ```python
     def set_working_plane_z(self, z: float) -> None:
@@ -142,7 +142,7 @@ from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
 
 #### 4.3 — Override mouse events for drawing mode
 
-- [ ] Add these mouse event overrides to `VTKViewport`, after the coordinate conversion methods:
+- [x] Add these mouse event overrides to `VTKViewport`, after the coordinate conversion methods:
 
 ```python
     def mousePressEvent(self, event) -> None:
@@ -180,14 +180,14 @@ from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
 
 #### 4.4 — Connect drawing signals in `MainWindow`
 
-- [ ] In `MainWindow.__init__`, in the connections section (after `self._undo_mgr.state_changed.connect(...)` ), add:
+- [x] In `MainWindow.__init__`, in the connections section (after `self._undo_mgr.state_changed.connect(...)` ), add:
 
 ```python
         self._viewport.drawing_click.connect(self._on_drawing_click)
         self._viewport.drawing_mouse_move.connect(self._on_drawing_mouse_move)
 ```
 
-- [ ] Add placeholder slots in the Slots section of `MainWindow`:
+- [x] Add placeholder slots in the Slots section of `MainWindow`:
 
 ```python
     def _on_drawing_click(self, x: float, y: float, z: float) -> None:
