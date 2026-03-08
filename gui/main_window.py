@@ -19,6 +19,7 @@ Layout:
 
 from __future__ import annotations
 
+from enum import Enum, auto
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QSize
@@ -56,6 +57,14 @@ from gui.core.model_data import AnalysisResult
 THEME_PATH = Path(__file__).parent / "theme" / "light.qss"
 
 
+class InteractionMode(Enum):
+    """Modos de interacción del viewport."""
+    SELECT = auto()
+    DRAW_NODE = auto()
+    DRAW_FRAME = auto()
+    DRAW_SHELL = auto()
+
+
 class MainWindow(QMainWindow):
     """Ventana principal de la aplicación."""
 
@@ -78,6 +87,9 @@ class MainWindow(QMainWindow):
 
         self._undo_mgr = UndoManager(max_stack=100)
         self._properties.set_undo_manager(self._undo_mgr)
+
+        # Modo de interacción activo
+        self._interaction_mode = InteractionMode.SELECT
 
         # Construcción de la interfaz
         self._build_menubar()
@@ -397,11 +409,46 @@ class MainWindow(QMainWindow):
         self._update_statusbar()
 
     def _update_statusbar(self) -> None:
+        if self._interaction_mode == InteractionMode.SELECT:
+            self.statusBar().showMessage(self._base_status_message())
+
+    # ------------------------------------------------------------------
+    # Mode switching
+    # ------------------------------------------------------------------
+
+    def set_mode(self, mode: InteractionMode) -> None:
+        """Cambia el modo de interacción activo."""
+        old_mode = self._interaction_mode
+        self._interaction_mode = mode
+
+        if mode == InteractionMode.SELECT:
+            self._viewport.enable_picking(self._model)
+            self._viewport.set_drawing_mode(False)
+            self.statusBar().showMessage(self._base_status_message())
+        else:
+            self._viewport.disable_picking()
+            self._viewport.set_drawing_mode(True)
+            mode_names = {
+                InteractionMode.DRAW_NODE: "Dibujar Nodo",
+                InteractionMode.DRAW_FRAME: "Dibujar Frame",
+                InteractionMode.DRAW_SHELL: "Dibujar Shell",
+            }
+            mode_label = mode_names.get(mode, "")
+            self.statusBar().showMessage(
+                f"Modo: {mode_label}  |  Clic en viewport para crear  |  "
+                f"Escape \u2192 Selecci\u00f3n"
+            )
+
+        if old_mode != mode:
+            self._console.log(f"Modo cambiado: {mode.name}")
+
+    def _base_status_message(self) -> str:
+        """Genera el mensaje de status bar base con conteos del modelo."""
         n = len(self._model.nodes)
         e = len(self._model.elements)
         m = len(self._model.materials)
         s = len(self._model.sections)
-        self.statusBar().showMessage(
+        return (
             f"Nodos: {n}  |  Elementos: {e}  |  Materiales: {m}  |  "
             f"Secciones: {s}  |  Unidades: kN, m, C"
         )
@@ -814,3 +861,11 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event) -> None:
         self._viewport.close()
         super().closeEvent(event)
+
+    def keyPressEvent(self, event) -> None:
+        """Maneja atajos de teclado globales."""
+        if event.key() == Qt.Key.Key_Escape:
+            if self._interaction_mode != InteractionMode.SELECT:
+                self.set_mode(InteractionMode.SELECT)
+                return
+        super().keyPressEvent(event)

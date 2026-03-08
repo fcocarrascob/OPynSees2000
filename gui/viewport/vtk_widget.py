@@ -66,6 +66,7 @@ class VTKViewport(QWidget):
         self._show_loads = False
         self._selected_tag: int | None = None
         self._selected_category: str | None = None
+        self._drawing_mode = False
 
     # ------------------------------------------------------------------
     # Setup
@@ -594,6 +595,14 @@ class VTKViewport(QWidget):
             picker="cell",
             tolerance=0.025,
         )
+
+    def disable_picking(self) -> None:
+        """Deshabilita el picking interactivo."""
+        self.plotter.disable_picking()
+
+    def set_drawing_mode(self, active: bool) -> None:
+        """Establece si el viewport está en modo dibujo."""
+        self._drawing_mode = active
 
     def close(self) -> None:
         self.plotter.close()
