@@ -12,8 +12,8 @@ Steps 1–4 completados y commiteados. Estás en la branch `fix/sap2000-load-pat
 
 #### 5.1 — Agregar método `_validate_model` y modificar `_on_run` en `analysis_dialog.py`
 
-- [ ] Abrir `gui/dialogs/analysis_dialog.py`
-- [ ] Localizar el método `_on_run` (línea ~162) y reemplazar con la siguiente versión que incluye validación:
+- [x] Abrir `gui/dialogs/analysis_dialog.py`
+- [x] Localizar el método `_on_run` (línea ~162) y reemplazar con la siguiente versión que incluye validación:
 
 **Buscar:**
 ```python
@@ -151,7 +151,7 @@ Steps 1–4 completados y commiteados. Estás en la branch `fix/sap2000-load-pat
 ---
 
 ### Step 5 Verification Checklist
-- [ ] No hay errores de import al ejecutar `python -c "from gui.dialogs.analysis_dialog import AnalysisDialog"`
+- [x] No hay errores de import al ejecutar `python -c "from gui.dialogs.analysis_dialog import AnalysisDialog"`
 - [ ] **Modelo vacío:** Archivo → Nuevo modelo → F5 → "El modelo no tiene elementos definidos."
 - [ ] **Sin apoyos:** Crear nodos y elementos sin restricciones → Análisis estático → "El modelo no tiene nodos restringidos"
 - [ ] **Sin cargas:** Crear modelo sin patrones de carga (imposible con DEAD auto, pero verificar validación)
