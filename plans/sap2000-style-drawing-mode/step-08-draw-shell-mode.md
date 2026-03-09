@@ -12,8 +12,8 @@ Steps 1–7 must be completed and committed.
 
 #### 8.1 — Add shell drawing state to `MainWindow`
 
-- [ ] Open `gui/main_window.py`
-- [ ] In `__init__`, after the frame state attributes (`self._frame_first_coords`), add:
+- [x] Open `gui/main_window.py`
+- [x] In `__init__`, after the frame state attributes (`self._frame_first_coords`), add:
 
 ```python
         # Estado de dibujo de shells (4 clics)
@@ -23,7 +23,7 @@ Steps 1–7 must be completed and committed.
 
 #### 8.2 — Implement `_handle_draw_shell`
 
-- [ ] Replace the placeholder `_handle_draw_shell` method with:
+- [x] Replace the placeholder `_handle_draw_shell` method with:
 
 ```python
     def _handle_draw_shell(self, x: float, y: float, z: float) -> None:
@@ -131,7 +131,7 @@ Steps 1–7 must be completed and committed.
 
 #### 8.3 — Implement shell preview on mouse move
 
-- [ ] Replace the placeholder `_update_shell_preview` method with:
+- [x] Replace the placeholder `_update_shell_preview` method with:
 
 ```python
     def _update_shell_preview(self, x: float, y: float, z: float) -> None:
@@ -144,7 +144,7 @@ Steps 1–7 must be completed and committed.
 
 #### 8.4 — Handle Escape to cancel shell in progress
 
-- [ ] Update the `keyPressEvent` in `MainWindow` to handle shell cancellation. Replace the full method with:
+- [x] Update the `keyPressEvent` in `MainWindow` to handle shell cancellation. Replace the full method with:
 
 ```python
     def keyPressEvent(self, event) -> None:
@@ -176,7 +176,7 @@ Steps 1–7 must be completed and committed.
 
 #### 8.5 — Reset shell state on mode change
 
-- [ ] In `set_mode()`, add shell state reset alongside frame state reset. After the frame reset lines, add:
+- [x] In `set_mode()`, add shell state reset alongside frame state reset. After the frame reset lines, add:
 
 ```python
         # Reset shell drawing state

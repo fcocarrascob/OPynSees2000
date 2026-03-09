@@ -101,6 +101,10 @@ class MainWindow(QMainWindow):
         self._frame_first_node: int | None = None  # tag del primer nodo (None = esperando 1er clic)
         self._frame_first_coords: tuple[float, float, float] | None = None
 
+        # Estado de dibujo de shells (4 clics)
+        self._shell_nodes: list[int] = []       # tags de nodos acumulados (0-3)
+        self._shell_coords: list[tuple[float, float, float]] = []  # coords de nodos acumulados
+
         # Construcción de la interfaz
         self._build_menubar()
         self._build_toolbar()
@@ -581,6 +585,10 @@ class MainWindow(QMainWindow):
         self._frame_first_node = None
         self._frame_first_coords = None
 
+        # Reset shell drawing state
+        self._shell_nodes.clear()
+        self._shell_coords.clear()
+
         # Sincronizar toolbar buttons
         mode_actions = {
             InteractionMode.SELECT: self._act_mode_select,
@@ -767,8 +775,106 @@ class MainWindow(QMainWindow):
             self._viewport.clear_all_previews()
 
     def _handle_draw_shell(self, x: float, y: float, z: float) -> None:
-        """Placeholder — implementado en Step 8."""
-        pass
+        """Maneja clics en modo DRAW_SHELL (secuencia de 4 clics)."""
+        from gui.viewport.picking import find_closest_node
+        from gui.core.model_data import Node, Element, ElementType
+
+        click_num = len(self._shell_nodes) + 1  # 1, 2, 3, o 4
+        node_labels = {1: "I", 2: "J", 3: "K", 4: "L"}
+
+        # Resolver nodo: snap a existente o crear nuevo
+        existing = find_closest_node(self._model, (x, y, z), tolerance=0.15)
+        commands_for_node: list = []
+
+        if existing is not None:
+            node_tag = existing
+            node_obj = self._model.nodes[existing]
+            node_coords = (node_obj.x, node_obj.y, node_obj.z)
+            self._console.log(
+                f"Shell: nodo {node_labels[click_num]} = {existing} (existente)"
+            )
+        else:
+            node_tag = self._model.next_node_tag()
+            node_obj = Node(tag=node_tag, x=x, y=y, z=z)
+            node_coords = (x, y, z)
+            commands_for_node.append(DictChangeCommand(
+                target_dict=self._model.nodes,
+                key=node_tag,
+                old_value=None,
+                new_value=node_obj,
+                desc=f"Crear nodo {node_tag} para shell",
+            ))
+            self._console.log(
+                f"Shell: nodo {node_labels[click_num]} = {node_tag} "
+                f"(nuevo: {x:.2f}, {y:.2f}, {z:.2f})"
+            )
+
+        # Prevenir nodo duplicado en el mismo shell
+        if node_tag in self._shell_nodes:
+            self._console.log_error(
+                f"Shell: nodo {node_tag} ya está en la secuencia. Seleccione otro."
+            )
+            return
+
+        self._shell_nodes.append(node_tag)
+        self._shell_coords.append(node_coords)
+
+        if click_num < 4:
+            # Aún no tenemos 4 nodos — crear nodo inmediatamente si es nuevo
+            for cmd in commands_for_node:
+                self._undo_mgr.execute(cmd)
+            if commands_for_node:
+                self._refresh_all()
+
+            # Actualizar preview
+            self._viewport.show_preview_shell_lines(self._shell_coords)
+            remaining = 4 - click_num
+            self._console.log(
+                f"Shell: {click_num}/4 nodos — faltan {remaining}"
+            )
+        else:
+            # === CUARTO CLIC: crear shell ===
+            all_commands: list = list(commands_for_node)
+
+            elem_tag = self._model.next_element_tag()
+            element = Element(
+                tag=elem_tag,
+                elem_type=ElementType.SHELL_MITC4,
+                node_i=self._shell_nodes[0],
+                node_j=self._shell_nodes[1],
+                node_k=self._shell_nodes[2],
+                node_l=self._shell_nodes[3],
+                section_tag=None,
+                transf_tag=None,
+            )
+            all_commands.append(DictChangeCommand(
+                target_dict=self._model.elements,
+                key=elem_tag,
+                old_value=None,
+                new_value=element,
+                desc=f"Crear shell {elem_tag}",
+            ))
+
+            # Ejecutar como comando compuesto
+            tags_str = "→".join(str(t) for t in self._shell_nodes)
+            if len(all_commands) == 1:
+                self._undo_mgr.execute(all_commands[0])
+            else:
+                compound = CompoundUndoCommand(
+                    all_commands,
+                    desc=f"Crear shell {elem_tag} [{tags_str}]",
+                )
+                self._undo_mgr.execute(compound)
+
+            self._refresh_all()
+            self._console.log_success(
+                f"Shell {elem_tag} creado: [{tags_str}] ShellMITC4"
+            )
+
+            # Reset para siguiente shell (continuo)
+            self._shell_nodes.clear()
+            self._shell_coords.clear()
+            self._viewport.clear_all_previews()
 
     def _on_drawing_mouse_move(self, x: float, y: float, z: float) -> None:
         """Actualiza previews durante movimiento del mouse en modo dibujo."""
@@ -809,8 +915,11 @@ class MainWindow(QMainWindow):
             self._viewport.show_preview_node((x, y, z))
 
     def _update_shell_preview(self, x: float, y: float, z: float) -> None:
-        """Actualiza preview de shell — implementado en Step 8."""
-        pass
+        """Actualiza preview progresiva de shell durante movimiento del mouse."""
+        # Construir lista temporal: nodos confirmados + cursor actual
+        preview_pts = list(self._shell_coords) + [(x, y, z)]
+        self._viewport.show_preview_shell_lines(preview_pts)
+        self._viewport.show_preview_node((x, y, z))
 
     def _on_new_model(self) -> None:
         self._model.clear()
@@ -1243,11 +1352,16 @@ class MainWindow(QMainWindow):
         """Maneja atajos de teclado globales."""
         if event.key() == Qt.Key.Key_Escape:
             if self._interaction_mode == InteractionMode.DRAW_FRAME and self._frame_first_node is not None:
-                # Cancelar frame en progreso, volver al primer clic
                 self._frame_first_node = None
                 self._frame_first_coords = None
                 self._viewport.clear_all_previews()
-                self._console.log("Frame cancelado \u2014 esperando primer nodo.")
+                self._console.log("Frame cancelado — esperando primer nodo.")
+                return
+            if self._interaction_mode == InteractionMode.DRAW_SHELL and self._shell_nodes:
+                self._shell_nodes.clear()
+                self._shell_coords.clear()
+                self._viewport.clear_all_previews()
+                self._console.log("Shell cancelado — esperando primer nodo.")
                 return
             if self._interaction_mode != InteractionMode.SELECT:
                 self.set_mode(InteractionMode.SELECT)
