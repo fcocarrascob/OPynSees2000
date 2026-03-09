@@ -742,15 +742,25 @@ class MainWindow(QMainWindow):
                 self._console.log_error("Frame: nodos I y J no pueden ser iguales.")
                 return
 
-            # Crear elemento frame
+            # Obtener propiedades del template de dibujo
+            template = self._model.drawing_template
+            elem_type = template.frame_elem_type
+            section_tag = template.frame_section_tag
+            transf_tag = template.frame_transf_tag
+
+            # Para Truss/CorotTruss no se necesita transformación
+            if elem_type in (ElementType.TRUSS, ElementType.COROT_TRUSS):
+                transf_tag = None
+
+            # Crear elemento frame con propiedades del template
             elem_tag = self._model.next_element_tag()
             element = Element(
                 tag=elem_tag,
-                elem_type=ElementType.ELASTIC_BEAM_COLUMN,
+                elem_type=elem_type,
                 node_i=self._frame_first_node,
                 node_j=node_j_tag,
-                section_tag=None,
-                transf_tag=None,
+                section_tag=section_tag,
+                transf_tag=transf_tag,
             )
             commands.append(DictChangeCommand(
                 target_dict=self._model.elements,
@@ -771,9 +781,10 @@ class MainWindow(QMainWindow):
                 self._undo_mgr.execute(compound)
 
             self._refresh_all()
+            sec_display = f"Sección: {section_tag}" if section_tag else "Sección: N/A"
             self._console.log_success(
                 f"Frame {elem_tag} creado: [{self._frame_first_node}\u2192{node_j_tag}] "
-                f"elasticBeamColumn"
+                f"{elem_type.value} — {sec_display}"
             )
 
             # Reset para siguiente frame (continuo)

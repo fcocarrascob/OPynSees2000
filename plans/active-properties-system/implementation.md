@@ -488,8 +488,8 @@ And replace with:
 
 Modify `_handle_draw_frame()` in `gui/main_window.py` to use the `drawing_template` values when creating elements.
 
-- [ ] Open `gui/main_window.py`
-- [ ] In `_handle_draw_frame()`, find the section where the element is created (inside the `else` / second-click block). Find:
+- [x] Open `gui/main_window.py`
+- [x] In `_handle_draw_frame()`, find the section where the element is created (inside the `else` / second-click block). Find:
 
 ```python
             # Crear elemento frame
@@ -529,7 +529,7 @@ And replace with:
             )
 ```
 
-- [ ] Update the log message at the end to show the actual properties used. Find:
+- [x] Update the log message at the end to show the actual properties used. Find:
 
 ```python
             self._console.log_success(
