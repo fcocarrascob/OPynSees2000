@@ -12,8 +12,8 @@ Steps 1–6 must be completed and committed.
 
 #### 7.1 — Add frame drawing state to `MainWindow`
 
-- [ ] Open `gui/main_window.py`
-- [ ] In `__init__`, after `self._snap_mgr` creation, add:
+- [x] Open `gui/main_window.py`
+- [x] In `__init__`, after `self._snap_mgr` creation, add:
 
 ```python
         # Estado de dibujo de frames (2 clics)
@@ -23,7 +23,7 @@ Steps 1–6 must be completed and committed.
 
 #### 7.2 — Add node snapping helper
 
-- [ ] Add this utility method to `MainWindow`, in the Mode switching section:
+- [x] Add this utility method to `MainWindow`, in the Mode switching section:
 
 ```python
     def _find_or_create_node(
@@ -48,7 +48,7 @@ Steps 1–6 must be completed and committed.
 
 #### 7.3 — Implement `_handle_draw_frame`
 
-- [ ] Replace the placeholder `_handle_draw_frame` method with:
+- [x] Replace the placeholder `_handle_draw_frame` method with:
 
 ```python
     def _handle_draw_frame(self, x: float, y: float, z: float) -> None:
@@ -156,7 +156,7 @@ Steps 1–6 must be completed and committed.
 
 #### 7.4 — Implement frame preview on mouse move
 
-- [ ] Replace the placeholder `_update_frame_preview` method with:
+- [x] Replace the placeholder `_update_frame_preview` method with:
 
 ```python
     def _update_frame_preview(self, x: float, y: float, z: float) -> None:
@@ -172,7 +172,7 @@ Steps 1–6 must be completed and committed.
 
 #### 7.5 — Handle Escape to cancel frame in progress
 
-- [ ] Update the `keyPressEvent` in `MainWindow` to also reset frame state:
+- [x] Update the `keyPressEvent` in `MainWindow` to also reset frame state:
 
 ```python
     def keyPressEvent(self, event) -> None:
@@ -198,7 +198,7 @@ Steps 1–6 must be completed and committed.
 
 #### 7.6 — Reset frame state on mode change
 
-- [ ] In `set_mode()`, add frame state reset at the beginning of the method (after `old_mode = ...`):
+- [x] In `set_mode()`, add frame state reset at the beginning of the method (after `old_mode = ...`):
 
 ```python
         # Reset frame drawing state

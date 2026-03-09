@@ -97,6 +97,10 @@ class MainWindow(QMainWindow):
         # Snap manager
         self._snap_mgr = SnapManager(spacing=1.0, enabled=True)
 
+        # Estado de dibujo de frames (2 clics)
+        self._frame_first_node: int | None = None  # tag del primer nodo (None = esperando 1er clic)
+        self._frame_first_coords: tuple[float, float, float] | None = None
+
         # Construcción de la interfaz
         self._build_menubar()
         self._build_toolbar()
@@ -543,6 +547,25 @@ class MainWindow(QMainWindow):
     # Mode switching
     # ------------------------------------------------------------------
 
+    def _find_or_create_node(
+        self, x: float, y: float, z: float, tolerance: float = 0.15
+    ) -> tuple[int, bool]:
+        """
+        Busca un nodo existente cercano o crea uno nuevo.
+
+        Returns:
+            (tag, was_created) — tag del nodo y si fue creado nuevo.
+        """
+        from gui.viewport.picking import find_closest_node
+        existing = find_closest_node(self._model, (x, y, z), tolerance=tolerance)
+        if existing is not None:
+            return (existing, False)
+
+        tag = self._model.next_node_tag()
+        from gui.core.model_data import Node
+        node = Node(tag=tag, x=x, y=y, z=z)
+        return (tag, True)
+
     def _on_mode_action_triggered(self, action: QAction) -> None:
         """Slot cuando se selecciona un modo desde el toolbar."""
         mode = action.data()
@@ -553,6 +576,10 @@ class MainWindow(QMainWindow):
         """Cambia el modo de interacción activo."""
         old_mode = self._interaction_mode
         self._interaction_mode = mode
+
+        # Reset frame drawing state
+        self._frame_first_node = None
+        self._frame_first_coords = None
 
         # Sincronizar toolbar buttons
         mode_actions = {
@@ -640,8 +667,104 @@ class MainWindow(QMainWindow):
         )
 
     def _handle_draw_frame(self, x: float, y: float, z: float) -> None:
-        """Placeholder — implementado en Step 7."""
-        pass
+        """Maneja clics en modo DRAW_FRAME (secuencia de 2 clics)."""
+        from gui.viewport.picking import find_closest_node
+        from gui.core.model_data import Node, Element, ElementType
+
+        if self._frame_first_node is None:
+            # === PRIMER CLIC: establecer nodo I ===
+            existing = find_closest_node(self._model, (x, y, z), tolerance=0.15)
+            if existing is not None:
+                self._frame_first_node = existing
+                node = self._model.nodes[existing]
+                self._frame_first_coords = (node.x, node.y, node.z)
+                self._console.log(
+                    f"Frame: nodo I = {existing} (existente)"
+                )
+            else:
+                # Crear nodo nuevo como primer nodo
+                tag = self._model.next_node_tag()
+                node = Node(tag=tag, x=x, y=y, z=z)
+                cmd = DictChangeCommand(
+                    target_dict=self._model.nodes,
+                    key=tag,
+                    old_value=None,
+                    new_value=node,
+                    desc=f"Crear nodo {tag} para frame",
+                )
+                self._undo_mgr.execute(cmd)
+                self._frame_first_node = tag
+                self._frame_first_coords = (x, y, z)
+                self._refresh_all()
+                self._console.log(
+                    f"Frame: nodo I = {tag} (nuevo: {x:.2f}, {y:.2f}, {z:.2f})"
+                )
+        else:
+            # === SEGUNDO CLIC: establecer nodo J y crear frame ===
+            commands: list = []
+
+            # Resolver nodo J
+            existing_j = find_closest_node(self._model, (x, y, z), tolerance=0.15)
+            if existing_j is not None:
+                node_j_tag = existing_j
+                self._console.log(f"Frame: nodo J = {existing_j} (existente)")
+            else:
+                node_j_tag = self._model.next_node_tag()
+                node_j = Node(tag=node_j_tag, x=x, y=y, z=z)
+                commands.append(DictChangeCommand(
+                    target_dict=self._model.nodes,
+                    key=node_j_tag,
+                    old_value=None,
+                    new_value=node_j,
+                    desc=f"Crear nodo {node_j_tag} para frame",
+                ))
+                self._console.log(
+                    f"Frame: nodo J = {node_j_tag} (nuevo: {x:.2f}, {y:.2f}, {z:.2f})"
+                )
+
+            # Prevenir frame de un nodo a sí mismo
+            if node_j_tag == self._frame_first_node:
+                self._console.log_error("Frame: nodos I y J no pueden ser iguales.")
+                return
+
+            # Crear elemento frame
+            elem_tag = self._model.next_element_tag()
+            element = Element(
+                tag=elem_tag,
+                elem_type=ElementType.ELASTIC_BEAM_COLUMN,
+                node_i=self._frame_first_node,
+                node_j=node_j_tag,
+                section_tag=None,
+                transf_tag=None,
+            )
+            commands.append(DictChangeCommand(
+                target_dict=self._model.elements,
+                key=elem_tag,
+                old_value=None,
+                new_value=element,
+                desc=f"Crear elemento {elem_tag}",
+            ))
+
+            # Ejecutar como comando compuesto
+            if len(commands) == 1:
+                self._undo_mgr.execute(commands[0])
+            else:
+                compound = CompoundUndoCommand(
+                    commands,
+                    desc=f"Crear frame {elem_tag} [{self._frame_first_node}\u2192{node_j_tag}]",
+                )
+                self._undo_mgr.execute(compound)
+
+            self._refresh_all()
+            self._console.log_success(
+                f"Frame {elem_tag} creado: [{self._frame_first_node}\u2192{node_j_tag}] "
+                f"elasticBeamColumn"
+            )
+
+            # Reset para siguiente frame (continuo)
+            self._frame_first_node = None
+            self._frame_first_coords = None
+            self._viewport.clear_all_previews()
 
     def _handle_draw_shell(self, x: float, y: float, z: float) -> None:
         """Placeholder — implementado en Step 8."""
@@ -676,8 +799,14 @@ class MainWindow(QMainWindow):
             self._update_shell_preview(x, y, z)
 
     def _update_frame_preview(self, x: float, y: float, z: float) -> None:
-        """Actualiza preview de frame — implementado en Step 7."""
-        pass
+        """Actualiza preview de línea durante el segundo clic del frame."""
+        if self._frame_first_coords is not None:
+            # Mostrar preview line desde primer nodo hasta cursor
+            self._viewport.show_preview_line(self._frame_first_coords, (x, y, z))
+            self._viewport.show_preview_node((x, y, z))
+        else:
+            # Antes del primer clic, solo mostrar preview node
+            self._viewport.show_preview_node((x, y, z))
 
     def _update_shell_preview(self, x: float, y: float, z: float) -> None:
         """Actualiza preview de shell — implementado en Step 8."""
@@ -1113,6 +1242,13 @@ class MainWindow(QMainWindow):
     def keyPressEvent(self, event) -> None:
         """Maneja atajos de teclado globales."""
         if event.key() == Qt.Key.Key_Escape:
+            if self._interaction_mode == InteractionMode.DRAW_FRAME and self._frame_first_node is not None:
+                # Cancelar frame en progreso, volver al primer clic
+                self._frame_first_node = None
+                self._frame_first_coords = None
+                self._viewport.clear_all_previews()
+                self._console.log("Frame cancelado \u2014 esperando primer nodo.")
+                return
             if self._interaction_mode != InteractionMode.SELECT:
                 self.set_mode(InteractionMode.SELECT)
                 return

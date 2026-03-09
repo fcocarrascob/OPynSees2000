@@ -45,10 +45,13 @@ COLOR_LABEL = "#212121"           # negro/gris oscuro
 _PREVIEW_SNAP = "_preview_snap"
 _PREVIEW_NODE = "_preview_node"
 _PREVIEW_OFFSET = "_preview_offset"
+_PREVIEW_LINE = "_preview_line"
+_PREVIEW_SHELL_LINES = "_preview_shell_lines"
 
 COLOR_SNAP_INDICATOR = "#4CAF50"  # verde — snap indicator
 COLOR_PREVIEW_NODE = "#FF9800"    # naranja — nodo preview
 COLOR_PREVIEW_OFFSET = "#9E9E9E"  # gris — línea de offset
+COLOR_PREVIEW = "#FF9800"         # naranja — preview líneas/shells
 
 
 class VTKViewport(QWidget):
@@ -817,11 +820,63 @@ class VTKViewport(QWidget):
         )
         self.plotter.render()
 
+    def show_preview_line(
+        self,
+        start: tuple[float, float, float],
+        end: tuple[float, float, float],
+    ) -> None:
+        """Muestra una línea preview entre dos puntos (para frames)."""
+        self.plotter.remove_actor(_PREVIEW_LINE, render=False)
+        line = pv.Line(pointa=start, pointb=end)
+        self.plotter.add_mesh(
+            line,
+            color=COLOR_PREVIEW,
+            line_width=3,
+            render_lines_as_tubes=True,
+            opacity=0.7,
+            name=_PREVIEW_LINE,
+        )
+        self.plotter.render()
+
+    def show_preview_shell_lines(
+        self, points: list[tuple[float, float, float]]
+    ) -> None:
+        """Muestra líneas preview progresivas para shell (1-4 puntos)."""
+        self.plotter.remove_actor(_PREVIEW_SHELL_LINES, render=False)
+        if len(points) < 2:
+            self.plotter.render()
+            return
+
+        pts = np.array(points, dtype=float)
+        n = len(pts)
+        line_cells = []
+        for i in range(n - 1):
+            line_cells.extend([2, i, i + 1])
+        # Cerrar si hay 4 puntos (quad completo)
+        if n == 4:
+            line_cells.extend([2, n - 1, 0])
+
+        mesh = pv.PolyData(pts, lines=np.array(line_cells))
+        self.plotter.add_mesh(
+            mesh,
+            color=COLOR_PREVIEW,
+            line_width=3,
+            render_lines_as_tubes=True,
+            opacity=0.7,
+            name=_PREVIEW_SHELL_LINES,
+        )
+        self.plotter.render()
+
     def clear_all_previews(self) -> None:
-        """Elimina todos los actores de preview (snap, node, offset)."""
-        self.plotter.remove_actor(_PREVIEW_SNAP, render=False)
-        self.plotter.remove_actor(_PREVIEW_NODE, render=False)
-        self.plotter.remove_actor(_PREVIEW_OFFSET, render=False)
+        """Elimina todos los actores de preview."""
+        for name in (
+            _PREVIEW_SNAP,
+            _PREVIEW_NODE,
+            _PREVIEW_OFFSET,
+            _PREVIEW_LINE,
+            _PREVIEW_SHELL_LINES,
+        ):
+            self.plotter.remove_actor(name, render=False)
         self.plotter.render()
 
     def eventFilter(self, obj, event) -> bool:
