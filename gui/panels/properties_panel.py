@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
@@ -247,7 +248,158 @@ class PropertiesPanel(QScrollArea):
             hint.setWordWrap(True)
             self._layout.addWidget(hint)
 
+        # Sección de configuración de snap
+        self.show_snap_settings(model, mode)
+
         self._layout.addStretch()
+
+    def show_snap_settings(
+        self,
+        model: "StructuralModel",
+        mode: str,
+        on_setting_changed: "callable | None" = None,
+    ) -> None:
+        """Muestra la configuración de snap y plano de trabajo.
+
+        Parameters
+        ----------
+        model : StructuralModel
+            Modelo actual (contiene drawing_template).
+        mode : str
+            ``"frame"``, ``"shell"`` o ``"node"`` — para controlar visibilidad
+            del checkbox snap-to-points.
+        on_setting_changed : callable | None
+            Callback invocado cuando un setting cambia: on_setting_changed(field_name, value).
+        """
+        template = model.drawing_template
+
+        grp = QGroupBox("Configuración de Snap")
+        form = QFormLayout()
+        grp.setLayout(form)
+
+        # ── Working Plane Mode ──
+        combo_plane = QComboBox()
+        plane_options = ["Free 3D", "XY Plane", "XZ Plane", "YZ Plane"]
+        plane_values = ["Free", "XY", "XZ", "YZ"]
+        for display, value in zip(plane_options, plane_values):
+            combo_plane.addItem(display, value)
+        current_plane_idx = plane_values.index(template.working_plane_mode) if template.working_plane_mode in plane_values else 0
+        combo_plane.setCurrentIndex(current_plane_idx)
+        combo_plane.setToolTip(
+            "Plano de trabajo activo.\n"
+            "XY: bloquea Z | XZ: bloquea Y | YZ: bloquea X\n"
+            "Free 3D: sin restricción.\n"
+            "Mantener Shift al hacer clic = Free 3D temporal."
+        )
+
+        # ── Elevation ──
+        spin_elevation = QDoubleSpinBox()
+        spin_elevation.setDecimals(2)
+        spin_elevation.setRange(-1000.0, 1000.0)
+        spin_elevation.setSingleStep(0.1)
+        spin_elevation.setValue(template.working_plane_elevation)
+        spin_elevation.setSuffix(" m")
+
+        # Label dinámico para elevación
+        elevation_label = QLabel(self._elevation_label_text(template.working_plane_mode))
+
+        def _update_elevation_label(idx: int) -> None:
+            plane_val = combo_plane.itemData(idx)
+            elevation_label.setText(self._elevation_label_text(plane_val))
+            # Mostrar/ocultar elevación según modo
+            is_free = (plane_val == "Free")
+            spin_elevation.setVisible(not is_free)
+            elevation_label.setVisible(not is_free)
+
+        # Ocultar elevación si es Free
+        is_free = (template.working_plane_mode == "Free")
+        spin_elevation.setVisible(not is_free)
+        elevation_label.setVisible(not is_free)
+
+        # ── Grid Spacing ──
+        spin_spacing = QDoubleSpinBox()
+        spin_spacing.setDecimals(2)
+        spin_spacing.setRange(0.01, 100.0)
+        spin_spacing.setSingleStep(0.1)
+        spin_spacing.setValue(template.snap_spacing)
+        spin_spacing.setSuffix(" m")
+        spin_spacing.setToolTip("Espaciado de la grilla de snap")
+
+        # ── Merge Tolerance ──
+        spin_tolerance = QDoubleSpinBox()
+        spin_tolerance.setDecimals(3)
+        spin_tolerance.setRange(0.001, 10.0)
+        spin_tolerance.setSingleStep(0.01)
+        spin_tolerance.setValue(template.snap_tolerance)
+        spin_tolerance.setSuffix(" m")
+        spin_tolerance.setToolTip("Tolerancia para fusionar nodos cercanos")
+
+        # ── Snap to Points ──
+        chk_snap_points = QCheckBox("Snap a Puntos")
+        chk_snap_points.setChecked(template.snap_to_points_enabled)
+        chk_snap_points.setToolTip(
+            "Cuando activo, el clic cerca de un nodo existente\n"
+            "usa sus coordenadas exactas 3D (ignora plano).\n"
+            "Shift+clic = Free 3D temporal."
+        )
+        # Solo mostrar en modos de dibujo frame/shell
+        show_snap_to_points = mode in ("frame", "shell")
+        chk_snap_points.setVisible(show_snap_to_points)
+
+        # ── Conectar callbacks ──
+        def _on_plane_changed(idx: int) -> None:
+            value = combo_plane.itemData(idx)
+            template.working_plane_mode = value
+            _update_elevation_label(idx)
+            if on_setting_changed:
+                on_setting_changed("working_plane_mode", value)
+
+        def _on_elevation_changed() -> None:
+            template.working_plane_elevation = spin_elevation.value()
+            if on_setting_changed:
+                on_setting_changed("working_plane_elevation", spin_elevation.value())
+
+        def _on_spacing_changed() -> None:
+            template.snap_spacing = spin_spacing.value()
+            if on_setting_changed:
+                on_setting_changed("snap_spacing", spin_spacing.value())
+
+        def _on_tolerance_changed() -> None:
+            template.snap_tolerance = spin_tolerance.value()
+            if on_setting_changed:
+                on_setting_changed("snap_tolerance", spin_tolerance.value())
+
+        def _on_snap_points_changed(state: int) -> None:
+            template.snap_to_points_enabled = bool(state)
+            if on_setting_changed:
+                on_setting_changed("snap_to_points_enabled", bool(state))
+
+        combo_plane.currentIndexChanged.connect(_on_plane_changed)
+        spin_elevation.editingFinished.connect(_on_elevation_changed)
+        spin_spacing.editingFinished.connect(_on_spacing_changed)
+        spin_tolerance.editingFinished.connect(_on_tolerance_changed)
+        chk_snap_points.stateChanged.connect(_on_snap_points_changed)
+
+        # ── Agregar al formulario ──
+        form.addRow("Plano de trabajo:", combo_plane)
+        form.addRow(elevation_label, spin_elevation)
+        form.addRow("Espaciado grilla:", spin_spacing)
+        form.addRow("Tolerancia merge:", spin_tolerance)
+        if show_snap_to_points:
+            form.addRow(chk_snap_points)
+
+        self._layout.addWidget(grp)
+
+    @staticmethod
+    def _elevation_label_text(plane_mode: str) -> str:
+        """Retorna el texto de etiqueta de elevación según el plano."""
+        if plane_mode == "XY":
+            return "Elevación Z:"
+        elif plane_mode == "XZ":
+            return "Elevación Y:"
+        elif plane_mode == "YZ":
+            return "Elevación X:"
+        return "Elevación:"
 
     # ------------------------------------------------------------------
     # Builders internos para formularios de template

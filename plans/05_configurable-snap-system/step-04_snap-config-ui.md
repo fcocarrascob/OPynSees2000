@@ -10,8 +10,8 @@ Steps 1-3 must be completed and committed.
 
 #### Step 4.1: Add new imports to properties_panel.py
 
-- [ ] Open `gui/panels/properties_panel.py`
-- [ ] Find the existing imports block. After the line `from PySide6.QtWidgets import (`, find the closing `)` of that import block, and add `QCheckBox` to the imports. The full import should become:
+- [x] Open `gui/panels/properties_panel.py`
+- [x] Find the existing imports block. After the line `from PySide6.QtWidgets import (`, find the closing `)` of that import block, and add `QCheckBox` to the imports. The full import should become:
 
 ```python
 from PySide6.QtWidgets import (
@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 
 #### Step 4.2: Add the show_snap_settings method
 
-- [ ] In the `PropertiesPanel` class, add the following new method **right after** the `show_drawing_template()` method (after its last line before the `# Builders internos` comment):
+- [x] In the `PropertiesPanel` class, add the following new method **right after** the `show_drawing_template()` method (after its last line before the `# Builders internos` comment):
 
 ```python
     def show_snap_settings(
@@ -184,8 +184,8 @@ from PySide6.QtWidgets import (
 
 #### Step 4.3: Integrate snap settings into show_drawing_template
 
-- [ ] In the `show_drawing_template()` method, find the line `self._layout.addStretch()` at the end of the method
-- [ ] **Insert the following code before** that `self._layout.addStretch()` line:
+- [x] In the `show_drawing_template()` method, find the line `self._layout.addStretch()` at the end of the method
+- [x] **Insert the following code before** that `self._layout.addStretch()` line:
 
 ```python
         # Sección de configuración de snap
@@ -204,11 +204,11 @@ The end of `show_drawing_template()` should now look like:
 ```
 
 ##### Step 4 Verification Checklist
-- [ ] No import errors:
+- [x] No import errors:
   ```python
   python -c "from gui.panels.properties_panel import PropertiesPanel; print('Import OK')"
   ```
-- [ ] PropertiesPanel has the new methods:
+- [x] PropertiesPanel has the new methods:
   ```python
   python -c "
   from gui.panels.properties_panel import PropertiesPanel
@@ -217,7 +217,7 @@ The end of `show_drawing_template()` should now look like:
   print('Methods OK')
   "
   ```
-- [ ] Elevation label text is correct:
+- [x] Elevation label text is correct:
   ```python
   python -c "
   from gui.panels.properties_panel import PropertiesPanel
