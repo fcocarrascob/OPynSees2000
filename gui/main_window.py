@@ -605,6 +605,7 @@ class MainWindow(QMainWindow):
             self._viewport.set_drawing_mode(False)
             self._viewport.clear_all_previews()
             self._set_offset_widgets_visible(False)
+            self._properties.clear()
             self._update_statusbar()
         else:
             self._viewport.disable_picking()
@@ -617,10 +618,39 @@ class MainWindow(QMainWindow):
             }
             mode_label = mode_names.get(mode, "")
             snap = self._snap_mgr.status_text()
+
+            # Construir info de propiedades activas para status bar
+            props_info = ""
+            if mode == InteractionMode.DRAW_FRAME:
+                template = self._model.drawing_template
+                section_name = "(sin asignar)"
+                if template.frame_section_tag:
+                    sec = self._model.sections.get(template.frame_section_tag)
+                    if sec:
+                        section_name = sec.name
+                transf_name = "(sin asignar)"
+                if template.frame_transf_tag:
+                    transf_name = f"Tag {template.frame_transf_tag}"
+                props_info = f"  |  Sección: {section_name}  |  Transf: {transf_name}"
+            elif mode == InteractionMode.DRAW_SHELL:
+                template = self._model.drawing_template
+                section_name = "(sin asignar)"
+                if template.shell_section_tag:
+                    sec = self._model.sections.get(template.shell_section_tag)
+                    if sec:
+                        section_name = sec.name
+                props_info = f"  |  Sección: {section_name}"
+
             self.statusBar().showMessage(
-                f"Modo: {mode_label}  |  {snap}  |  "
+                f"Modo: {mode_label}  |  {snap}{props_info}  |  "
                 f"Clic en viewport para crear  |  Escape \u2192 Selecci\u00f3n"
             )
+
+            # Actualizar Properties Panel según modo de dibujo
+            if mode == InteractionMode.DRAW_FRAME:
+                self._properties.show_drawing_template(self._model, "frame")
+            elif mode == InteractionMode.DRAW_SHELL:
+                self._properties.show_drawing_template(self._model, "shell")
 
         if old_mode != mode:
             self._console.log(f"Modo cambiado: {mode.name}")
@@ -735,15 +765,25 @@ class MainWindow(QMainWindow):
                 self._console.log_error("Frame: nodos I y J no pueden ser iguales.")
                 return
 
-            # Crear elemento frame
+            # Obtener propiedades del template de dibujo
+            template = self._model.drawing_template
+            elem_type = template.frame_elem_type
+            section_tag = template.frame_section_tag
+            transf_tag = template.frame_transf_tag
+
+            # Para Truss/CorotTruss no se necesita transformación
+            if elem_type in (ElementType.TRUSS, ElementType.COROT_TRUSS):
+                transf_tag = None
+
+            # Crear elemento frame con propiedades del template
             elem_tag = self._model.next_element_tag()
             element = Element(
                 tag=elem_tag,
-                elem_type=ElementType.ELASTIC_BEAM_COLUMN,
+                elem_type=elem_type,
                 node_i=self._frame_first_node,
                 node_j=node_j_tag,
-                section_tag=None,
-                transf_tag=None,
+                section_tag=section_tag,
+                transf_tag=transf_tag,
             )
             commands.append(DictChangeCommand(
                 target_dict=self._model.elements,
@@ -764,9 +804,10 @@ class MainWindow(QMainWindow):
                 self._undo_mgr.execute(compound)
 
             self._refresh_all()
+            sec_display = f"Sección: {section_tag}" if section_tag else "Sección: N/A"
             self._console.log_success(
                 f"Frame {elem_tag} creado: [{self._frame_first_node}\u2192{node_j_tag}] "
-                f"elasticBeamColumn"
+                f"{elem_type.value} — {sec_display}"
             )
 
             # Reset para siguiente frame (continuo)
@@ -836,6 +877,10 @@ class MainWindow(QMainWindow):
             # === CUARTO CLIC: crear shell ===
             all_commands: list = list(commands_for_node)
 
+            # Obtener propiedades del template de dibujo
+            template = self._model.drawing_template
+            shell_section_tag = template.shell_section_tag
+
             elem_tag = self._model.next_element_tag()
             element = Element(
                 tag=elem_tag,
@@ -844,7 +889,7 @@ class MainWindow(QMainWindow):
                 node_j=self._shell_nodes[1],
                 node_k=self._shell_nodes[2],
                 node_l=self._shell_nodes[3],
-                section_tag=None,
+                section_tag=shell_section_tag,
                 transf_tag=None,
             )
             all_commands.append(DictChangeCommand(
@@ -867,8 +912,9 @@ class MainWindow(QMainWindow):
                 self._undo_mgr.execute(compound)
 
             self._refresh_all()
+            sec_display = f"Sección: {shell_section_tag}" if shell_section_tag else "Sección: N/A"
             self._console.log_success(
-                f"Shell {elem_tag} creado: [{tags_str}] ShellMITC4"
+                f"Shell {elem_tag} creado: [{tags_str}] ShellMITC4 — {sec_display}"
             )
 
             # Reset para siguiente shell (continuo)
@@ -1132,6 +1178,26 @@ class MainWindow(QMainWindow):
                 f"Sección creada: {sec.tag} — {sec.name} [{sec.sec_type.value}]"
             )
 
+            # Auto-asignar si es la primera sección y template no tiene sección
+            template = self._model.drawing_template
+            if len(self._model.sections) == 1:
+                if template.frame_section_tag is None:
+                    template.frame_section_tag = sec.tag
+                    self._console.log(
+                        f"✓ Sección {sec.name} auto-seleccionada para frames"
+                    )
+                if template.shell_section_tag is None:
+                    template.shell_section_tag = sec.tag
+                    self._console.log(
+                        f"✓ Sección {sec.name} auto-seleccionada para shells"
+                    )
+
+            # Refrescar panel si estamos en modo dibujo
+            if self._interaction_mode == InteractionMode.DRAW_FRAME:
+                self._properties.show_drawing_template(self._model, "frame")
+            elif self._interaction_mode == InteractionMode.DRAW_SHELL:
+                self._properties.show_drawing_template(self._model, "shell")
+
     def _on_define_transf(self) -> None:
         """Abre el diálogo para crear una nueva transformación."""
         dlg = TransfDialog(
@@ -1145,6 +1211,18 @@ class MainWindow(QMainWindow):
             self._console.log_success(
                 f"Transformación creada: {transf.tag} — {transf.transf_type.value}"
             )
+
+            # Auto-asignar si es la primera transformación
+            template = self._model.drawing_template
+            if len(self._model.geom_transfs) == 1 and template.frame_transf_tag is None:
+                template.frame_transf_tag = transf.tag
+                self._console.log(
+                    f"✓ Transformación Tag {transf.tag} auto-seleccionada para frames"
+                )
+
+            # Refrescar panel si estamos en modo dibujo frame
+            if self._interaction_mode == InteractionMode.DRAW_FRAME:
+                self._properties.show_drawing_template(self._model, "frame")
 
     def _on_define_pattern(self) -> None:
         """Abre el diálogo para crear un patrón de carga."""

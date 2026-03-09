@@ -303,6 +303,50 @@ class LoadPattern:
 
 
 # ---------------------------------------------------------------------------
+# Plantilla de dibujo — propiedades pre-asignadas para nuevos elementos
+# ---------------------------------------------------------------------------
+
+@dataclass
+class DrawingTemplate:
+    """Plantilla de propiedades para nuevos elementos dibujados en viewport."""
+
+    # Para Frames
+    frame_section_tag: Optional[int] = None
+    frame_transf_tag: Optional[int] = None
+    frame_elem_type: ElementType = ElementType.ELASTIC_BEAM_COLUMN
+
+    # Para Shells
+    shell_section_tag: Optional[int] = None
+    shell_thickness: float = 0.2  # metros
+
+    # Para Loads (patrón de carga activo — futuro)
+    active_load_pattern_tag: int = 1  # Default to DEAD
+
+    def to_dict(self) -> dict:
+        return {
+            "frame_section_tag": self.frame_section_tag,
+            "frame_transf_tag": self.frame_transf_tag,
+            "frame_elem_type": self.frame_elem_type.value if self.frame_elem_type else None,
+            "shell_section_tag": self.shell_section_tag,
+            "shell_thickness": self.shell_thickness,
+            "active_load_pattern_tag": self.active_load_pattern_tag,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "DrawingTemplate":
+        elem_type_str = data.get("frame_elem_type")
+        elem_type = ElementType(elem_type_str) if elem_type_str else ElementType.ELASTIC_BEAM_COLUMN
+        return cls(
+            frame_section_tag=data.get("frame_section_tag"),
+            frame_transf_tag=data.get("frame_transf_tag"),
+            frame_elem_type=elem_type,
+            shell_section_tag=data.get("shell_section_tag"),
+            shell_thickness=data.get("shell_thickness", 0.2),
+            active_load_pattern_tag=data.get("active_load_pattern_tag", 1),
+        )
+
+
+# ---------------------------------------------------------------------------
 # Resultado de análisis
 # ---------------------------------------------------------------------------
 
@@ -351,6 +395,7 @@ class StructuralModel:
         self.geom_transfs: dict[int, GeomTransf] = {}
         self.elements: dict[int, Element] = {}
         self.load_patterns: dict[int, LoadPattern] = {}
+        self.drawing_template = DrawingTemplate()
 
         if auto_create_dead:
             self.load_patterns[1] = LoadPattern(
@@ -394,6 +439,7 @@ class StructuralModel:
             "geom_transfs": {str(k): v.to_dict() for k, v in self.geom_transfs.items()},
             "elements": {str(k): v.to_dict() for k, v in self.elements.items()},
             "load_patterns": {str(k): v.to_dict() for k, v in self.load_patterns.items()},
+            "drawing_template": self.drawing_template.to_dict(),
         }
 
     @classmethod
@@ -412,6 +458,9 @@ class StructuralModel:
             model.elements[int(k)] = Element.from_dict(v)
         for k, v in d.get("load_patterns", {}).items():
             model.load_patterns[int(k)] = LoadPattern.from_dict(v)
+        model.drawing_template = DrawingTemplate.from_dict(
+            d.get("drawing_template", {})
+        )
         return model
 
     def clear(self) -> None:
@@ -422,6 +471,7 @@ class StructuralModel:
         self.geom_transfs.clear()
         self.elements.clear()
         self.load_patterns.clear()
+        self.drawing_template = DrawingTemplate()
         # Re-crear DEAD obligatorio
         self.load_patterns[1] = LoadPattern(
             tag=1,
