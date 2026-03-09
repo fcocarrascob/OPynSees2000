@@ -1,3 +1,20 @@
+# Step 1: Enhance SnapManager with Working Plane Support
+
+## Goal
+Extend `SnapManager` to support working plane modes (XY, XZ, YZ, Free) with axis-locking and configurable elevation snapping.
+
+## Prerequisites
+Make sure you are currently on the `feature/configurable-snap-system` branch before beginning implementation.
+If not, move to the correct branch. If the branch does not exist, create it from main.
+
+### Step-by-Step Instructions
+
+#### Step 1.1: Replace snap_manager.py with working plane support
+
+- [x] Open `gui/viewport/snap_manager.py`
+- [x] Replace the **entire file contents** with the code below:
+
+```python
 """
 SnapManager — Sistema de snap a grilla con soporte de planos de trabajo.
 
@@ -139,3 +156,80 @@ class SnapManager:
         if self._enabled:
             return f"[SNAP ON] | Grilla: {self._spacing}"
         return "[SNAP OFF]"
+```
+
+##### Step 1 Verification Checklist
+- [x] No import errors: run `python -c "from gui.viewport.snap_manager import SnapManager"`
+- [x] Test backward compatibility — existing `snap()` method still works:
+  ```python
+  python -c "
+  from gui.viewport.snap_manager import SnapManager
+  sm = SnapManager(spacing=1.0)
+  assert sm.snap(1.3, 2.7, 0.4) == (1.0, 3.0, 0.0), 'snap() failed'
+  print('snap() OK')
+  "
+  ```
+- [x] Test `snap_with_plane()` for XY mode:
+  ```python
+  python -c "
+  from gui.viewport.snap_manager import SnapManager
+  sm = SnapManager(spacing=1.0)
+  result = sm.snap_with_plane(1.3, 2.7, 5.5, 'XY', 3.0)
+  assert result == (1.0, 3.0, 3.0), f'XY failed: {result}'
+  print('XY plane OK')
+  "
+  ```
+- [x] Test `snap_with_plane()` for XZ mode:
+  ```python
+  python -c "
+  from gui.viewport.snap_manager import SnapManager
+  sm = SnapManager(spacing=1.0)
+  result = sm.snap_with_plane(1.3, 2.7, 5.5, 'XZ', 4.0)
+  assert result == (1.0, 4.0, 6.0), f'XZ failed: {result}'
+  print('XZ plane OK')
+  "
+  ```
+- [x] Test `snap_with_plane()` for YZ mode:
+  ```python
+  python -c "
+  from gui.viewport.snap_manager import SnapManager
+  sm = SnapManager(spacing=1.0)
+  result = sm.snap_with_plane(1.3, 2.7, 5.5, 'YZ', 2.0)
+  assert result == (2.0, 3.0, 6.0), f'YZ failed: {result}'
+  print('YZ plane OK')
+  "
+  ```
+- [x] Test `snap_with_plane()` for Free mode:
+  ```python
+  python -c "
+  from gui.viewport.snap_manager import SnapManager
+  sm = SnapManager(spacing=1.0)
+  result = sm.snap_with_plane(1.3, 2.7, 5.5, 'Free', 0.0)
+  assert result == (1.0, 3.0, 6.0), f'Free failed: {result}'
+  print('Free mode OK')
+  "
+  ```
+- [x] Test disabled snap returns unchanged coords:
+  ```python
+  python -c "
+  from gui.viewport.snap_manager import SnapManager
+  sm = SnapManager(spacing=1.0, enabled=False)
+  result = sm.snap_with_plane(1.3, 2.7, 5.5, 'XY', 3.0)
+  assert result == (1.3, 2.7, 5.5), f'Disabled failed: {result}'
+  print('Disabled snap OK')
+  "
+  ```
+- [x] Test custom spacing parameter:
+  ```python
+  python -c "
+  from gui.viewport.snap_manager import SnapManager
+  sm = SnapManager(spacing=1.0)
+  result = sm.snap_with_plane(1.3, 2.7, 5.5, 'XY', 0.0, spacing=0.5)
+  assert result == (1.5, 2.5, 0.0), f'Custom spacing failed: {result}'
+  print('Custom spacing OK')
+  "
+  ```
+- [x] Application still launches: `python -m gui`
+
+#### Step 1 STOP & COMMIT
+**STOP & COMMIT:** Agent must stop here and wait for the user to test, stage, and commit the change.
