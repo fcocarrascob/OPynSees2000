@@ -10,9 +10,9 @@ Step 1 (SnapManager with working plane support) must be completed and committed.
 
 #### Step 2.1: Add new fields to DrawingTemplate dataclass
 
-- [ ] Open `gui/core/model_data.py`
-- [ ] Find the `DrawingTemplate` dataclass (around line 315)
-- [ ] Replace the **entire `DrawingTemplate` class** with the code below:
+- [x] Open `gui/core/model_data.py`
+- [x] Find the `DrawingTemplate` dataclass (around line 315)
+- [x] Replace the **entire `DrawingTemplate` class** with the code below:
 
 ```python
 @dataclass
@@ -79,8 +79,8 @@ class DrawingTemplate:
 ```
 
 ##### Step 2 Verification Checklist
-- [ ] No import errors: run `python -c "from gui.core.model_data import DrawingTemplate"`
-- [ ] New fields exist with defaults:
+- [x] No import errors: run `python -c "from gui.core.model_data import DrawingTemplate"`
+- [x] New fields exist with defaults:
   ```python
   python -c "
   from gui.core.model_data import DrawingTemplate
@@ -93,7 +93,7 @@ class DrawingTemplate:
   print('All defaults OK')
   "
   ```
-- [ ] Serialization round-trip works:
+- [x] Serialization round-trip works:
   ```python
   python -c "
   from gui.core.model_data import DrawingTemplate
@@ -114,7 +114,7 @@ class DrawingTemplate:
   print('Round-trip OK')
   "
   ```
-- [ ] Backward compatibility — loading old data without new fields:
+- [x] Backward compatibility — loading old data without new fields:
   ```python
   python -c "
   from gui.core.model_data import DrawingTemplate
@@ -132,7 +132,7 @@ class DrawingTemplate:
   print('Backward compat OK')
   "
   ```
-- [ ] Invalid plane mode is corrected:
+- [x] Invalid plane mode is corrected:
   ```python
   python -c "
   from gui.core.model_data import DrawingTemplate
@@ -141,7 +141,7 @@ class DrawingTemplate:
   print('Validation OK')
   "
   ```
-- [ ] Full model save/load works:
+- [x] Full model save/load works:
   ```python
   python -c "
   from gui.core.model_data import StructuralModel

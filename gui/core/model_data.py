@@ -322,6 +322,13 @@ class DrawingTemplate:
     # Para Loads (patrón de carga activo — futuro)
     active_load_pattern_tag: int = 1  # Default to DEAD
 
+    # Snap & Working Plane Configuration
+    snap_spacing: float = 1.0
+    snap_tolerance: float = 0.15
+    snap_to_points_enabled: bool = True
+    working_plane_mode: str = "XY"  # "XY", "XZ", "YZ", "Free"
+    working_plane_elevation: float = 0.0
+
     def to_dict(self) -> dict:
         return {
             "frame_section_tag": self.frame_section_tag,
@@ -330,12 +337,23 @@ class DrawingTemplate:
             "shell_section_tag": self.shell_section_tag,
             "shell_thickness": self.shell_thickness,
             "active_load_pattern_tag": self.active_load_pattern_tag,
+            "snap_spacing": self.snap_spacing,
+            "snap_tolerance": self.snap_tolerance,
+            "snap_to_points_enabled": self.snap_to_points_enabled,
+            "working_plane_mode": self.working_plane_mode,
+            "working_plane_elevation": self.working_plane_elevation,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "DrawingTemplate":
         elem_type_str = data.get("frame_elem_type")
         elem_type = ElementType(elem_type_str) if elem_type_str else ElementType.ELASTIC_BEAM_COLUMN
+
+        # Validar working_plane_mode
+        plane_mode = data.get("working_plane_mode", "XY")
+        if plane_mode not in ("XY", "XZ", "YZ", "Free"):
+            plane_mode = "XY"
+
         return cls(
             frame_section_tag=data.get("frame_section_tag"),
             frame_transf_tag=data.get("frame_transf_tag"),
@@ -343,6 +361,11 @@ class DrawingTemplate:
             shell_section_tag=data.get("shell_section_tag"),
             shell_thickness=data.get("shell_thickness", 0.2),
             active_load_pattern_tag=data.get("active_load_pattern_tag", 1),
+            snap_spacing=data.get("snap_spacing", 1.0),
+            snap_tolerance=data.get("snap_tolerance", 0.15),
+            snap_to_points_enabled=data.get("snap_to_points_enabled", True),
+            working_plane_mode=plane_mode,
+            working_plane_elevation=data.get("working_plane_elevation", 0.0),
         )
 
 
