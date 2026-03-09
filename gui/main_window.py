@@ -854,6 +854,10 @@ class MainWindow(QMainWindow):
             # === CUARTO CLIC: crear shell ===
             all_commands: list = list(commands_for_node)
 
+            # Obtener propiedades del template de dibujo
+            template = self._model.drawing_template
+            shell_section_tag = template.shell_section_tag
+
             elem_tag = self._model.next_element_tag()
             element = Element(
                 tag=elem_tag,
@@ -862,7 +866,7 @@ class MainWindow(QMainWindow):
                 node_j=self._shell_nodes[1],
                 node_k=self._shell_nodes[2],
                 node_l=self._shell_nodes[3],
-                section_tag=None,
+                section_tag=shell_section_tag,
                 transf_tag=None,
             )
             all_commands.append(DictChangeCommand(
@@ -885,8 +889,9 @@ class MainWindow(QMainWindow):
                 self._undo_mgr.execute(compound)
 
             self._refresh_all()
+            sec_display = f"Sección: {shell_section_tag}" if shell_section_tag else "Sección: N/A"
             self._console.log_success(
-                f"Shell {elem_tag} creado: [{tags_str}] ShellMITC4"
+                f"Shell {elem_tag} creado: [{tags_str}] ShellMITC4 — {sec_display}"
             )
 
             # Reset para siguiente shell (continuo)

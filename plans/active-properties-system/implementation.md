@@ -567,8 +567,8 @@ And replace with:
 
 Modify `_handle_draw_shell()` in `gui/main_window.py` to use the `drawing_template` values when creating shell elements.
 
-- [ ] Open `gui/main_window.py`
-- [ ] In `_handle_draw_shell()`, find the section where the shell element is created (inside the `else` / fourth-click block). Find:
+- [x] Open `gui/main_window.py`
+- [x] In `_handle_draw_shell()`, find the section where the shell element is created (inside the `else` / fourth-click block). Find:
 
 ```python
             elem_tag = self._model.next_element_tag()
@@ -604,7 +604,7 @@ And replace with:
             )
 ```
 
-- [ ] Update the shell log message to include section info. Find:
+- [x] Update the shell log message to include section info. Find:
 
 ```python
             self._console.log_success(
