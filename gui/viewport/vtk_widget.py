@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from gui.core.model_data import StructuralModel, AnalysisResult
 
 from gui.viewport.picking import find_closest_node, find_closest_element
+from gui.viewport.working_plane import WorkingPlaneRenderer
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +92,9 @@ class VTKViewport(QWidget):
         # Working plane Z para proyección de rayos
         self._working_plane_z: float = 0.0
 
+        # Renderer del plano de trabajo visual
+        self._working_plane_renderer: WorkingPlaneRenderer | None = None
+
         # Throttle para mouse move (50ms)
         self._move_timer = QTimer(self)
         self._move_timer.setSingleShot(True)
@@ -112,6 +116,9 @@ class VTKViewport(QWidget):
         # Cámara isométrica inicial
         self.plotter.camera_position = "iso"
         self.plotter.camera.zoom(0.85)
+
+        # Inicializar renderer de plano de trabajo
+        self._working_plane_renderer = WorkingPlaneRenderer(self.plotter)
 
     # ------------------------------------------------------------------
     # Renderizado del modelo
@@ -137,6 +144,9 @@ class VTKViewport(QWidget):
             self._add_element_labels(model)
         if self._show_loads:
             self._add_load_arrows(model)
+
+        # Re-dibujar plano de trabajo si hay renderer
+        # (se redibuja después de clear para persistir entre refreshes)
 
         self.plotter.reset_camera()
         self.plotter.camera_position = "iso"
@@ -641,6 +651,23 @@ class VTKViewport(QWidget):
     def set_working_plane_z(self, z: float) -> None:
         """Establece la elevación del plano de trabajo para proyección."""
         self._working_plane_z = z
+
+    def update_working_plane_visual(
+        self,
+        plane_mode: str,
+        elevation: float,
+        spacing: float,
+    ) -> None:
+        """Actualiza la visualización del plano de trabajo."""
+        if self._working_plane_renderer is not None:
+            self._working_plane_renderer.update(plane_mode, elevation, spacing)
+            self.plotter.render()
+
+    def hide_working_plane_visual(self) -> None:
+        """Oculta la visualización del plano de trabajo."""
+        if self._working_plane_renderer is not None:
+            self._working_plane_renderer.hide()
+            self.plotter.render()
 
     def _screen_to_world(self, screen_x: int, screen_y: int) -> tuple[float, float, float] | None:
         """
