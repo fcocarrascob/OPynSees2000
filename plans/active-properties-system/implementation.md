@@ -138,8 +138,8 @@ And **before** it, add:
 
 Add `show_drawing_template()` and `clear()` methods to `gui/panels/properties_panel.py` that display an editable form for pre-creation properties.
 
-- [ ] Open `gui/panels/properties_panel.py`
-- [ ] Add `QComboBox` to the imports. Find:
+- [x] Open `gui/panels/properties_panel.py`
+- [x] Add `QComboBox` to the imports. Find:
 
 ```python
 from PySide6.QtWidgets import (
@@ -170,7 +170,7 @@ from PySide6.QtWidgets import (
 )
 ```
 
-- [ ] Add the runtime imports inside the `TYPE_CHECKING` block. Find:
+- [x] Add the runtime imports inside the `TYPE_CHECKING` block. Find:
 
 ```python
 if TYPE_CHECKING:
@@ -188,7 +188,7 @@ if TYPE_CHECKING:
 from gui.core.model_data import ElementType, SectionType
 ```
 
-- [ ] Add the `clear()` method and `show_drawing_template()` method **after** the `show_item()` method (after the `self._layout.addStretch()` line at the end of `show_item()`). Find the end of `show_item()`:
+- [x] Add the `clear()` method and `show_drawing_template()` method **after** the `show_item()` method (after the `self._layout.addStretch()` line at the end of `show_item()`). Find the end of `show_item()`:
 
 ```python
         self._layout.addWidget(grp)
@@ -406,9 +406,9 @@ And insert the following **between** `self._layout.addStretch()` and `def _resol
 ```
 
 ##### Step 2 Verification Checklist
-- [ ] No import errors — run `python -c "from gui.panels.properties_panel import PropertiesPanel; print('OK')"` successfully
-- [ ] `PropertiesPanel` has `clear()`, `show_drawing_template()` methods
-- [ ] `PropertiesPanel` has `_build_frame_template_form()`, `_build_shell_template_form()` methods
+- [x] No import errors — run `python -c "from gui.panels.properties_panel import PropertiesPanel; print('OK')"` successfully
+- [x] `PropertiesPanel` has `clear()`, `show_drawing_template()` methods
+- [x] `PropertiesPanel` has `_build_frame_template_form()`, `_build_shell_template_form()` methods
 
 #### Step 2 STOP & COMMIT
 **STOP & COMMIT:** Agent must stop here and wait for the user to test, stage, and commit the change.

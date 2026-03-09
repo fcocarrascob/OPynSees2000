@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import (
+    QComboBox,
     QDoubleSpinBox,
     QFormLayout,
     QGroupBox,
@@ -25,6 +26,8 @@ from PySide6.QtWidgets import (
 if TYPE_CHECKING:
     from gui.core.model_data import StructuralModel
     from gui.core.undo_manager import UndoManager
+
+from gui.core.model_data import ElementType, SectionType
 
 
 # Campos read-only que no se deben editar
@@ -163,6 +166,208 @@ class PropertiesPanel(QScrollArea):
 
         self._layout.addWidget(grp)
         self._layout.addStretch()
+
+    def clear(self) -> None:
+        """Limpia el panel y muestra el placeholder."""
+        self._current_item = None
+        self._current_category = ""
+        self._current_tag = 0
+        self._field_widgets.clear()
+        self._clear_layout()
+        self._placeholder = QLabel("Seleccione un ítem\nen el Model Tree")
+        self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._placeholder.setStyleSheet("color: #9E9E9E; padding: 30px;")
+        self._layout.addWidget(self._placeholder)
+
+    def show_drawing_template(
+        self,
+        model: "StructuralModel",
+        mode: str,
+    ) -> None:
+        """Muestra propiedades editables para elementos a crear.
+
+        Parameters
+        ----------
+        model : StructuralModel
+            Modelo actual.
+        mode : str
+            ``"frame"`` o ``"shell"``.
+        """
+        template = model.drawing_template
+
+        # Limpiar layout actual
+        self._clear_layout()
+        self._current_item = None
+        self._current_category = ""
+        self._current_tag = 0
+        self._field_widgets.clear()
+
+        # Título
+        if mode == "frame":
+            title_text = "Propiedades del Frame a Crear"
+        else:
+            title_text = "Propiedades del Shell a Crear"
+        title = QLabel(title_text)
+        title.setStyleSheet(
+            "font-weight: bold; font-size: 13px; padding: 6px 0; color: #1976D2;"
+        )
+        self._layout.addWidget(title)
+
+        # Info box
+        info = QLabel("Los elementos dibujados usarán estas propiedades")
+        info.setStyleSheet(
+            "color: #757575; font-size: 11px; padding: 4px; "
+            "background: #E3F2FD; border-radius: 3px;"
+        )
+        info.setWordWrap(True)
+        self._layout.addWidget(info)
+
+        # Formulario
+        grp = QGroupBox("Configuración")
+        form = QFormLayout()
+        grp.setLayout(form)
+
+        if mode == "frame":
+            self._build_frame_template_form(form, model, template)
+        elif mode == "shell":
+            self._build_shell_template_form(form, model, template)
+
+        self._layout.addWidget(grp)
+
+        # Hint para crear secciones si no hay
+        if not model.sections:
+            hint = QLabel(
+                "\u26a0\ufe0f No hay secciones definidas.\n"
+                "Crea una en Definir \u2192 Sección"
+            )
+            hint.setStyleSheet(
+                "color: #F57C00; padding: 10px; "
+                "background: #FFF3E0; border-radius: 3px;"
+            )
+            hint.setWordWrap(True)
+            self._layout.addWidget(hint)
+
+        self._layout.addStretch()
+
+    # ------------------------------------------------------------------
+    # Builders internos para formularios de template
+    # ------------------------------------------------------------------
+
+    def _build_frame_template_form(
+        self,
+        form: QFormLayout,
+        model: "StructuralModel",
+        template: "DrawingTemplate",
+    ) -> None:
+        """Construye los campos del formulario para template de frame."""
+        from gui.core.model_data import DrawingTemplate  # noqa: F811
+
+        # Dropdown: Tipo de Elemento
+        combo_type = QComboBox()
+        for elem_type in [
+            ElementType.ELASTIC_BEAM_COLUMN,
+            ElementType.FORCE_BEAM_COLUMN,
+            ElementType.DISP_BEAM_COLUMN,
+            ElementType.TRUSS,
+            ElementType.COROT_TRUSS,
+        ]:
+            combo_type.addItem(elem_type.value, elem_type)
+        current_idx = combo_type.findData(template.frame_elem_type)
+        if current_idx >= 0:
+            combo_type.setCurrentIndex(current_idx)
+        combo_type.currentIndexChanged.connect(
+            lambda _idx, c=combo_type, t=template: self._on_template_type_changed(t, c)
+        )
+        form.addRow("Tipo de Elemento:", combo_type)
+
+        # Dropdown: Sección (poblado dinámicamente)
+        combo_section = QComboBox()
+        combo_section.addItem("(Sin asignar)", None)
+        for tag, section in model.sections.items():
+            display = f"{section.name} [{section.sec_type.value}]"
+            combo_section.addItem(display, tag)
+        if template.frame_section_tag is not None:
+            idx = combo_section.findData(template.frame_section_tag)
+            if idx >= 0:
+                combo_section.setCurrentIndex(idx)
+        combo_section.currentIndexChanged.connect(
+            lambda _idx, c=combo_section, t=template: self._on_template_section_changed(t, c)
+        )
+        form.addRow("Sección:", combo_section)
+
+        # Dropdown: Transformación
+        combo_transf = QComboBox()
+        combo_transf.addItem("(Sin asignar)", None)
+        for tag, transf in model.geom_transfs.items():
+            display = f"Tag {tag} [{transf.transf_type.value}]"
+            combo_transf.addItem(display, tag)
+        if template.frame_transf_tag is not None:
+            idx = combo_transf.findData(template.frame_transf_tag)
+            if idx >= 0:
+                combo_transf.setCurrentIndex(idx)
+        combo_transf.currentIndexChanged.connect(
+            lambda _idx, c=combo_transf, t=template: self._on_template_transf_changed(t, c)
+        )
+        form.addRow("Transformación:", combo_transf)
+
+    def _build_shell_template_form(
+        self,
+        form: QFormLayout,
+        model: "StructuralModel",
+        template: "DrawingTemplate",
+    ) -> None:
+        """Construye los campos del formulario para template de shell."""
+        from gui.core.model_data import DrawingTemplate  # noqa: F811
+
+        # Dropdown: Sección (solo secciones compatibles con shells)
+        combo_section = QComboBox()
+        combo_section.addItem("(Sin asignar)", None)
+        for tag, section in model.sections.items():
+            display = f"{section.name} [{section.sec_type.value}]"
+            combo_section.addItem(display, tag)
+        if template.shell_section_tag is not None:
+            idx = combo_section.findData(template.shell_section_tag)
+            if idx >= 0:
+                combo_section.setCurrentIndex(idx)
+        combo_section.currentIndexChanged.connect(
+            lambda _idx, c=combo_section, t=template: self._on_template_shell_section_changed(t, c)
+        )
+        form.addRow("Sección:", combo_section)
+
+        # Espesor
+        spin_thick = QDoubleSpinBox()
+        spin_thick.setDecimals(3)
+        spin_thick.setRange(0.001, 10.0)
+        spin_thick.setValue(template.shell_thickness)
+        spin_thick.setSuffix(" m")
+        spin_thick.editingFinished.connect(
+            lambda s=spin_thick, t=template: self._on_template_thickness_changed(t, s.value())
+        )
+        form.addRow("Espesor:", spin_thick)
+
+    # ------------------------------------------------------------------
+    # Callbacks de template
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _on_template_type_changed(template: "DrawingTemplate", combo: QComboBox) -> None:
+        template.frame_elem_type = combo.currentData()
+
+    @staticmethod
+    def _on_template_section_changed(template: "DrawingTemplate", combo: QComboBox) -> None:
+        template.frame_section_tag = combo.currentData()
+
+    @staticmethod
+    def _on_template_transf_changed(template: "DrawingTemplate", combo: QComboBox) -> None:
+        template.frame_transf_tag = combo.currentData()
+
+    @staticmethod
+    def _on_template_shell_section_changed(template: "DrawingTemplate", combo: QComboBox) -> None:
+        template.shell_section_tag = combo.currentData()
+
+    @staticmethod
+    def _on_template_thickness_changed(template: "DrawingTemplate", value: float) -> None:
+        template.shell_thickness = value
 
     def _resolve_item(self, model, category, tag):
         """Busca el objeto dentro del modelo."""
