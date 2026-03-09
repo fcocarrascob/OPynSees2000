@@ -419,8 +419,8 @@ And insert the following **between** `self._layout.addStretch()` and `def _resol
 
 Modify `set_mode()` in `gui/main_window.py` to update the Properties Panel when entering/leaving drawing modes.
 
-- [ ] Open `gui/main_window.py`
-- [ ] In the `set_mode()` method, update the `InteractionMode.SELECT` branch to clear the properties panel. Find:
+- [x] Open `gui/main_window.py`
+- [x] In the `set_mode()` method, update the `InteractionMode.SELECT` branch to clear the properties panel. Find:
 
 ```python
         if mode == InteractionMode.SELECT:
@@ -443,7 +443,7 @@ And replace with:
             self._update_statusbar()
 ```
 
-- [ ] In the same `set_mode()` method, inside the `else` branch (for drawing modes), add the panel update **after** the status bar message. Find:
+- [x] In the same `set_mode()` method, inside the `else` branch (for drawing modes), add the panel update **after** the status bar message. Find:
 
 ```python
             snap = self._snap_mgr.status_text()
@@ -476,6 +476,8 @@ And replace with:
 - [ ] Press Escape (back to SELECT) → Properties Panel shows placeholder "Seleccione un ítem"
 - [ ] Switch from DRAW_FRAME → DRAW_SHELL → Properties Panel updates correctly
 - [ ] If no sections defined, see the warning hint "No hay secciones definidas"
+
+> Implementation complete — awaiting user verification.
 
 #### Step 3 STOP & COMMIT
 **STOP & COMMIT:** Agent must stop here and wait for the user to test, stage, and commit the change.

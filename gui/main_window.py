@@ -605,6 +605,7 @@ class MainWindow(QMainWindow):
             self._viewport.set_drawing_mode(False)
             self._viewport.clear_all_previews()
             self._set_offset_widgets_visible(False)
+            self._properties.clear()
             self._update_statusbar()
         else:
             self._viewport.disable_picking()
@@ -621,6 +622,12 @@ class MainWindow(QMainWindow):
                 f"Modo: {mode_label}  |  {snap}  |  "
                 f"Clic en viewport para crear  |  Escape \u2192 Selecci\u00f3n"
             )
+
+            # Actualizar Properties Panel según modo de dibujo
+            if mode == InteractionMode.DRAW_FRAME:
+                self._properties.show_drawing_template(self._model, "frame")
+            elif mode == InteractionMode.DRAW_SHELL:
+                self._properties.show_drawing_template(self._model, "shell")
 
         if old_mode != mode:
             self._console.log(f"Modo cambiado: {mode.name}")
