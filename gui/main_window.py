@@ -19,12 +19,15 @@ Layout:
 
 from __future__ import annotations
 
+from enum import Enum, auto
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtCore import Qt, QSize, QEvent, QObject
+from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 from PySide6.QtWidgets import (
+    QDoubleSpinBox,
     QFileDialog,
+    QLabel,
     QMainWindow,
     QSplitter,
     QStatusBar,
@@ -33,12 +36,13 @@ from PySide6.QtWidgets import (
 )
 
 from gui.core.model_data import StructuralModel
-from gui.core.undo_manager import UndoManager
+from gui.core.undo_manager import UndoManager, DictChangeCommand, CompoundUndoCommand
 from gui.dialogs.about_dialog import AboutDialog
 from gui.panels.console_panel import ConsolePanel
 from gui.panels.model_tree import ModelTree
 from gui.panels.properties_panel import PropertiesPanel
 from gui.viewport.vtk_widget import VTKViewport
+from gui.viewport.snap_manager import SnapManager
 from gui.core.project_io import save_project, load_project, FILE_FILTER
 from gui.dialogs.element_dialog import ElementDialog
 from gui.dialogs.fixity_dialog import FixityDialog
@@ -54,6 +58,14 @@ from gui.core.model_data import AnalysisResult
 
 
 THEME_PATH = Path(__file__).parent / "theme" / "light.qss"
+
+
+class InteractionMode(Enum):
+    """Modos de interacción del viewport."""
+    SELECT = auto()
+    DRAW_NODE = auto()
+    DRAW_FRAME = auto()
+    DRAW_SHELL = auto()
 
 
 class MainWindow(QMainWindow):
@@ -79,11 +91,27 @@ class MainWindow(QMainWindow):
         self._undo_mgr = UndoManager(max_stack=100)
         self._properties.set_undo_manager(self._undo_mgr)
 
+        # Modo de interacción activo
+        self._interaction_mode = InteractionMode.SELECT
+
+        # Snap manager
+        self._snap_mgr = SnapManager(spacing=1.0, enabled=True)
+
+        # Estado de dibujo de frames (2 clics)
+        self._frame_first_node: int | None = None  # tag del primer nodo (None = esperando 1er clic)
+        self._frame_first_coords: tuple[float, float, float] | None = None
+
+        # Estado de dibujo de shells (4 clics)
+        self._shell_nodes: list[int] = []       # tags de nodos acumulados (0-3)
+        self._shell_coords: list[tuple[float, float, float]] = []  # coords de nodos acumulados
+
         # Construcción de la interfaz
         self._build_menubar()
         self._build_toolbar()
         self._build_layout()
         self._build_statusbar()
+
+        self._viewport.set_snap_manager(self._snap_mgr)
 
         # Conexiones
         self._tree.item_selected.connect(self._on_tree_item_selected)
@@ -91,6 +119,12 @@ class MainWindow(QMainWindow):
         self._viewport.item_picked.connect(self._on_viewport_pick)
         self._properties.property_changed.connect(self._on_property_changed)
         self._undo_mgr.state_changed.connect(self._update_undo_actions)
+
+        self._viewport.drawing_click.connect(self._on_drawing_click)
+        self._viewport.drawing_mouse_move.connect(self._on_drawing_mouse_move)
+
+        # Capturar teclado del viewport VTK (para Escape, etc.)
+        self._viewport.plotter.installEventFilter(self)
 
         # Carga inicial
         self._refresh_all()
@@ -304,6 +338,16 @@ class MainWindow(QMainWindow):
         act_units.setEnabled(False)
         m_options.addAction(act_units)
 
+        m_options.addSeparator()
+
+        self._act_snap_menu = QAction("Snap a grilla", self)
+        self._act_snap_menu.setShortcut(QKeySequence("F9"))
+        self._act_snap_menu.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
+        self._act_snap_menu.setCheckable(True)
+        self._act_snap_menu.setChecked(True)
+        self._act_snap_menu.toggled.connect(self._on_toggle_snap)
+        m_options.addAction(self._act_snap_menu)
+
         # --- Ayuda ---
         m_help = mb.addMenu("A&yuda")
 
@@ -387,6 +431,53 @@ class MainWindow(QMainWindow):
         self._act_loads.toggled.connect(self._on_toggle_loads)
         tb.addAction(self._act_loads)
 
+        tb.addSeparator()
+
+        self._act_snap = QAction("Snap", self)
+        self._act_snap.setToolTip("Activar/desactivar snap a grilla (F9)")
+        self._act_snap.setCheckable(True)
+        self._act_snap.setChecked(True)
+        self._act_snap.toggled.connect(self._on_toggle_snap)
+        tb.addAction(self._act_snap)
+
+        # --- Separador de modos ---
+        tb.addSeparator()
+
+        # Grupo exclusivo de modos
+        self._mode_group = QActionGroup(self)
+        self._mode_group.setExclusive(True)
+
+        self._act_mode_select = QAction("Selección", self)
+        self._act_mode_select.setToolTip("Modo selección (Escape)")
+        self._act_mode_select.setCheckable(True)
+        self._act_mode_select.setChecked(True)
+        self._act_mode_select.setData(InteractionMode.SELECT)
+        self._mode_group.addAction(self._act_mode_select)
+        tb.addAction(self._act_mode_select)
+
+        self._act_mode_node = QAction("Dibujar Nodo", self)
+        self._act_mode_node.setToolTip("Dibujar nodos en viewport (1 clic)")
+        self._act_mode_node.setCheckable(True)
+        self._act_mode_node.setData(InteractionMode.DRAW_NODE)
+        self._mode_group.addAction(self._act_mode_node)
+        tb.addAction(self._act_mode_node)
+
+        self._act_mode_frame = QAction("Dibujar Frame", self)
+        self._act_mode_frame.setToolTip("Dibujar frames en viewport (2 clics)")
+        self._act_mode_frame.setCheckable(True)
+        self._act_mode_frame.setData(InteractionMode.DRAW_FRAME)
+        self._mode_group.addAction(self._act_mode_frame)
+        tb.addAction(self._act_mode_frame)
+
+        self._act_mode_shell = QAction("Dibujar Shell", self)
+        self._act_mode_shell.setToolTip("Dibujar shells en viewport (4 clics)")
+        self._act_mode_shell.setCheckable(True)
+        self._act_mode_shell.setData(InteractionMode.DRAW_SHELL)
+        self._mode_group.addAction(self._act_mode_shell)
+        tb.addAction(self._act_mode_shell)
+
+        self._mode_group.triggered.connect(self._on_mode_action_triggered)
+
     # ------------------------------------------------------------------
     # Status bar
     # ------------------------------------------------------------------
@@ -394,21 +485,441 @@ class MainWindow(QMainWindow):
     def _build_statusbar(self) -> None:
         sb = QStatusBar()
         self.setStatusBar(sb)
+
+        # Offset widgets (solo visibles en DRAW_NODE)
+        self._offset_label = QLabel("  Offset:")
+        self._offset_dx = QDoubleSpinBox()
+        self._offset_dx.setPrefix("ΔX: ")
+        self._offset_dx.setSuffix(" m")
+        self._offset_dx.setDecimals(2)
+        self._offset_dx.setRange(-1e6, 1e6)
+        self._offset_dx.setValue(0.0)
+        self._offset_dx.setFixedWidth(120)
+
+        self._offset_dy = QDoubleSpinBox()
+        self._offset_dy.setPrefix("ΔY: ")
+        self._offset_dy.setSuffix(" m")
+        self._offset_dy.setDecimals(2)
+        self._offset_dy.setRange(-1e6, 1e6)
+        self._offset_dy.setValue(0.0)
+        self._offset_dy.setFixedWidth(120)
+
+        self._offset_dz = QDoubleSpinBox()
+        self._offset_dz.setPrefix("ΔZ: ")
+        self._offset_dz.setSuffix(" m")
+        self._offset_dz.setDecimals(2)
+        self._offset_dz.setRange(-1e6, 1e6)
+        self._offset_dz.setValue(0.0)
+        self._offset_dz.setFixedWidth(120)
+
+        sb.addPermanentWidget(self._offset_label)
+        sb.addPermanentWidget(self._offset_dx)
+        sb.addPermanentWidget(self._offset_dy)
+        sb.addPermanentWidget(self._offset_dz)
+
+        # Ocultar por defecto
+        self._set_offset_widgets_visible(False)
+
         self._update_statusbar()
 
+    def _set_offset_widgets_visible(self, visible: bool) -> None:
+        """Muestra u oculta los widgets de offset en la status bar."""
+        self._offset_label.setVisible(visible)
+        self._offset_dx.setVisible(visible)
+        self._offset_dy.setVisible(visible)
+        self._offset_dz.setVisible(visible)
+
+    def _get_offset(self) -> tuple[float, float, float]:
+        """Retorna el offset actual (ΔX, ΔY, ΔZ)."""
+        return (
+            self._offset_dx.value(),
+            self._offset_dy.value(),
+            self._offset_dz.value(),
+        )
+
+    def _reset_offset(self) -> None:
+        """Resetea el offset a (0, 0, 0)."""
+        self._offset_dx.setValue(0.0)
+        self._offset_dy.setValue(0.0)
+        self._offset_dz.setValue(0.0)
+
     def _update_statusbar(self) -> None:
+        if self._interaction_mode == InteractionMode.SELECT:
+            self.statusBar().showMessage(self._base_status_message())
+
+    # ------------------------------------------------------------------
+    # Mode switching
+    # ------------------------------------------------------------------
+
+    def _find_or_create_node(
+        self, x: float, y: float, z: float, tolerance: float = 0.15
+    ) -> tuple[int, bool]:
+        """
+        Busca un nodo existente cercano o crea uno nuevo.
+
+        Returns:
+            (tag, was_created) — tag del nodo y si fue creado nuevo.
+        """
+        from gui.viewport.picking import find_closest_node
+        existing = find_closest_node(self._model, (x, y, z), tolerance=tolerance)
+        if existing is not None:
+            return (existing, False)
+
+        tag = self._model.next_node_tag()
+        from gui.core.model_data import Node
+        node = Node(tag=tag, x=x, y=y, z=z)
+        return (tag, True)
+
+    def _on_mode_action_triggered(self, action: QAction) -> None:
+        """Slot cuando se selecciona un modo desde el toolbar."""
+        mode = action.data()
+        if mode is not None:
+            self.set_mode(mode)
+
+    def set_mode(self, mode: InteractionMode) -> None:
+        """Cambia el modo de interacción activo."""
+        old_mode = self._interaction_mode
+        self._interaction_mode = mode
+
+        # Reset frame drawing state
+        self._frame_first_node = None
+        self._frame_first_coords = None
+
+        # Reset shell drawing state
+        self._shell_nodes.clear()
+        self._shell_coords.clear()
+
+        # Sincronizar toolbar buttons
+        mode_actions = {
+            InteractionMode.SELECT: self._act_mode_select,
+            InteractionMode.DRAW_NODE: self._act_mode_node,
+            InteractionMode.DRAW_FRAME: self._act_mode_frame,
+            InteractionMode.DRAW_SHELL: self._act_mode_shell,
+        }
+        target_action = mode_actions.get(mode)
+        if target_action and not target_action.isChecked():
+            target_action.setChecked(True)
+
+        if mode == InteractionMode.SELECT:
+            self._viewport.enable_picking(self._model)
+            self._viewport.set_drawing_mode(False)
+            self._viewport.clear_all_previews()
+            self._set_offset_widgets_visible(False)
+            self._update_statusbar()
+        else:
+            self._viewport.disable_picking()
+            self._viewport.set_drawing_mode(True)
+            self._set_offset_widgets_visible(mode == InteractionMode.DRAW_NODE)
+            mode_names = {
+                InteractionMode.DRAW_NODE: "Dibujar Nodo",
+                InteractionMode.DRAW_FRAME: "Dibujar Frame",
+                InteractionMode.DRAW_SHELL: "Dibujar Shell",
+            }
+            mode_label = mode_names.get(mode, "")
+            snap = self._snap_mgr.status_text()
+            self.statusBar().showMessage(
+                f"Modo: {mode_label}  |  {snap}  |  "
+                f"Clic en viewport para crear  |  Escape \u2192 Selecci\u00f3n"
+            )
+
+        if old_mode != mode:
+            self._console.log(f"Modo cambiado: {mode.name}")
+
+    def _base_status_message(self) -> str:
+        """Genera el mensaje de status bar base con conteos del modelo."""
         n = len(self._model.nodes)
         e = len(self._model.elements)
         m = len(self._model.materials)
         s = len(self._model.sections)
-        self.statusBar().showMessage(
+        snap = self._snap_mgr.status_text()
+        return (
             f"Nodos: {n}  |  Elementos: {e}  |  Materiales: {m}  |  "
-            f"Secciones: {s}  |  Unidades: kN, m, C"
+            f"Secciones: {s}  |  {snap}  |  Unidades: kN, m, C"
         )
 
     # ------------------------------------------------------------------
     # Slots
     # ------------------------------------------------------------------
+
+    def _on_drawing_click(self, x: float, y: float, z: float) -> None:
+        """Maneja clic en modo dibujo."""
+        if self._interaction_mode == InteractionMode.DRAW_NODE:
+            self._handle_draw_node(x, y, z)
+        elif self._interaction_mode == InteractionMode.DRAW_FRAME:
+            self._handle_draw_frame(x, y, z)
+        elif self._interaction_mode == InteractionMode.DRAW_SHELL:
+            self._handle_draw_shell(x, y, z)
+
+    def _handle_draw_node(self, x: float, y: float, z: float) -> None:
+        """Crea un nodo en la posición clickeada + offset."""
+        dx, dy, dz = self._get_offset()
+        final_x = x + dx
+        final_y = y + dy
+        final_z = z + dz
+
+        tag = self._model.next_node_tag()
+        from gui.core.model_data import Node
+        node = Node(tag=tag, x=final_x, y=final_y, z=final_z)
+
+        cmd = DictChangeCommand(
+            target_dict=self._model.nodes,
+            key=tag,
+            old_value=None,
+            new_value=node,
+            desc=f"Crear nodo {tag} ({final_x:.2f}, {final_y:.2f}, {final_z:.2f})",
+        )
+        self._undo_mgr.execute(cmd)
+        self._refresh_all()
+        self._console.log_success(
+            f"Nodo {tag} creado: ({final_x:.2f}, {final_y:.2f}, {final_z:.2f})"
+        )
+
+    def _handle_draw_frame(self, x: float, y: float, z: float) -> None:
+        """Maneja clics en modo DRAW_FRAME (secuencia de 2 clics)."""
+        from gui.viewport.picking import find_closest_node
+        from gui.core.model_data import Node, Element, ElementType
+
+        if self._frame_first_node is None:
+            # === PRIMER CLIC: establecer nodo I ===
+            existing = find_closest_node(self._model, (x, y, z), tolerance=0.15)
+            if existing is not None:
+                self._frame_first_node = existing
+                node = self._model.nodes[existing]
+                self._frame_first_coords = (node.x, node.y, node.z)
+                self._console.log(
+                    f"Frame: nodo I = {existing} (existente)"
+                )
+            else:
+                # Crear nodo nuevo como primer nodo
+                tag = self._model.next_node_tag()
+                node = Node(tag=tag, x=x, y=y, z=z)
+                cmd = DictChangeCommand(
+                    target_dict=self._model.nodes,
+                    key=tag,
+                    old_value=None,
+                    new_value=node,
+                    desc=f"Crear nodo {tag} para frame",
+                )
+                self._undo_mgr.execute(cmd)
+                self._frame_first_node = tag
+                self._frame_first_coords = (x, y, z)
+                self._refresh_all()
+                self._console.log(
+                    f"Frame: nodo I = {tag} (nuevo: {x:.2f}, {y:.2f}, {z:.2f})"
+                )
+        else:
+            # === SEGUNDO CLIC: establecer nodo J y crear frame ===
+            commands: list = []
+
+            # Resolver nodo J
+            existing_j = find_closest_node(self._model, (x, y, z), tolerance=0.15)
+            if existing_j is not None:
+                node_j_tag = existing_j
+                self._console.log(f"Frame: nodo J = {existing_j} (existente)")
+            else:
+                node_j_tag = self._model.next_node_tag()
+                node_j = Node(tag=node_j_tag, x=x, y=y, z=z)
+                commands.append(DictChangeCommand(
+                    target_dict=self._model.nodes,
+                    key=node_j_tag,
+                    old_value=None,
+                    new_value=node_j,
+                    desc=f"Crear nodo {node_j_tag} para frame",
+                ))
+                self._console.log(
+                    f"Frame: nodo J = {node_j_tag} (nuevo: {x:.2f}, {y:.2f}, {z:.2f})"
+                )
+
+            # Prevenir frame de un nodo a sí mismo
+            if node_j_tag == self._frame_first_node:
+                self._console.log_error("Frame: nodos I y J no pueden ser iguales.")
+                return
+
+            # Crear elemento frame
+            elem_tag = self._model.next_element_tag()
+            element = Element(
+                tag=elem_tag,
+                elem_type=ElementType.ELASTIC_BEAM_COLUMN,
+                node_i=self._frame_first_node,
+                node_j=node_j_tag,
+                section_tag=None,
+                transf_tag=None,
+            )
+            commands.append(DictChangeCommand(
+                target_dict=self._model.elements,
+                key=elem_tag,
+                old_value=None,
+                new_value=element,
+                desc=f"Crear elemento {elem_tag}",
+            ))
+
+            # Ejecutar como comando compuesto
+            if len(commands) == 1:
+                self._undo_mgr.execute(commands[0])
+            else:
+                compound = CompoundUndoCommand(
+                    commands,
+                    desc=f"Crear frame {elem_tag} [{self._frame_first_node}\u2192{node_j_tag}]",
+                )
+                self._undo_mgr.execute(compound)
+
+            self._refresh_all()
+            self._console.log_success(
+                f"Frame {elem_tag} creado: [{self._frame_first_node}\u2192{node_j_tag}] "
+                f"elasticBeamColumn"
+            )
+
+            # Reset para siguiente frame (continuo)
+            self._frame_first_node = None
+            self._frame_first_coords = None
+            self._viewport.clear_all_previews()
+
+    def _handle_draw_shell(self, x: float, y: float, z: float) -> None:
+        """Maneja clics en modo DRAW_SHELL (secuencia de 4 clics)."""
+        from gui.viewport.picking import find_closest_node
+        from gui.core.model_data import Node, Element, ElementType
+
+        click_num = len(self._shell_nodes) + 1  # 1, 2, 3, o 4
+        node_labels = {1: "I", 2: "J", 3: "K", 4: "L"}
+
+        # Resolver nodo: snap a existente o crear nuevo
+        existing = find_closest_node(self._model, (x, y, z), tolerance=0.15)
+        commands_for_node: list = []
+
+        if existing is not None:
+            node_tag = existing
+            node_obj = self._model.nodes[existing]
+            node_coords = (node_obj.x, node_obj.y, node_obj.z)
+            self._console.log(
+                f"Shell: nodo {node_labels[click_num]} = {existing} (existente)"
+            )
+        else:
+            node_tag = self._model.next_node_tag()
+            node_obj = Node(tag=node_tag, x=x, y=y, z=z)
+            node_coords = (x, y, z)
+            commands_for_node.append(DictChangeCommand(
+                target_dict=self._model.nodes,
+                key=node_tag,
+                old_value=None,
+                new_value=node_obj,
+                desc=f"Crear nodo {node_tag} para shell",
+            ))
+            self._console.log(
+                f"Shell: nodo {node_labels[click_num]} = {node_tag} "
+                f"(nuevo: {x:.2f}, {y:.2f}, {z:.2f})"
+            )
+
+        # Prevenir nodo duplicado en el mismo shell
+        if node_tag in self._shell_nodes:
+            self._console.log_error(
+                f"Shell: nodo {node_tag} ya está en la secuencia. Seleccione otro."
+            )
+            return
+
+        self._shell_nodes.append(node_tag)
+        self._shell_coords.append(node_coords)
+
+        if click_num < 4:
+            # Aún no tenemos 4 nodos — crear nodo inmediatamente si es nuevo
+            for cmd in commands_for_node:
+                self._undo_mgr.execute(cmd)
+            if commands_for_node:
+                self._refresh_all()
+
+            # Actualizar preview
+            self._viewport.show_preview_shell_lines(self._shell_coords)
+            remaining = 4 - click_num
+            self._console.log(
+                f"Shell: {click_num}/4 nodos — faltan {remaining}"
+            )
+        else:
+            # === CUARTO CLIC: crear shell ===
+            all_commands: list = list(commands_for_node)
+
+            elem_tag = self._model.next_element_tag()
+            element = Element(
+                tag=elem_tag,
+                elem_type=ElementType.SHELL_MITC4,
+                node_i=self._shell_nodes[0],
+                node_j=self._shell_nodes[1],
+                node_k=self._shell_nodes[2],
+                node_l=self._shell_nodes[3],
+                section_tag=None,
+                transf_tag=None,
+            )
+            all_commands.append(DictChangeCommand(
+                target_dict=self._model.elements,
+                key=elem_tag,
+                old_value=None,
+                new_value=element,
+                desc=f"Crear shell {elem_tag}",
+            ))
+
+            # Ejecutar como comando compuesto
+            tags_str = "→".join(str(t) for t in self._shell_nodes)
+            if len(all_commands) == 1:
+                self._undo_mgr.execute(all_commands[0])
+            else:
+                compound = CompoundUndoCommand(
+                    all_commands,
+                    desc=f"Crear shell {elem_tag} [{tags_str}]",
+                )
+                self._undo_mgr.execute(compound)
+
+            self._refresh_all()
+            self._console.log_success(
+                f"Shell {elem_tag} creado: [{tags_str}] ShellMITC4"
+            )
+
+            # Reset para siguiente shell (continuo)
+            self._shell_nodes.clear()
+            self._shell_coords.clear()
+            self._viewport.clear_all_previews()
+
+    def _on_drawing_mouse_move(self, x: float, y: float, z: float) -> None:
+        """Actualiza previews durante movimiento del mouse en modo dibujo."""
+        if self._interaction_mode == InteractionMode.DRAW_NODE:
+            # Snap indicator en la posición del cursor
+            if self._snap_mgr and self._snap_mgr.enabled:
+                self._viewport.show_snap_indicator((x, y, z))
+
+            # Calcular posición final con offset
+            dx, dy, dz = self._get_offset()
+            final = (x + dx, y + dy, z + dz)
+
+            # Preview node en posición final
+            self._viewport.show_preview_node(final)
+
+            # Si hay offset, mostrar línea punteada desde click a final
+            if dx != 0 or dy != 0 or dz != 0:
+                self._viewport.show_offset_preview((x, y, z), final)
+
+        elif self._interaction_mode == InteractionMode.DRAW_FRAME:
+            if self._snap_mgr and self._snap_mgr.enabled:
+                self._viewport.show_snap_indicator((x, y, z))
+            self._update_frame_preview(x, y, z)
+
+        elif self._interaction_mode == InteractionMode.DRAW_SHELL:
+            if self._snap_mgr and self._snap_mgr.enabled:
+                self._viewport.show_snap_indicator((x, y, z))
+            self._update_shell_preview(x, y, z)
+
+    def _update_frame_preview(self, x: float, y: float, z: float) -> None:
+        """Actualiza preview de línea durante el segundo clic del frame."""
+        if self._frame_first_coords is not None:
+            # Mostrar preview line desde primer nodo hasta cursor
+            self._viewport.show_preview_line(self._frame_first_coords, (x, y, z))
+            self._viewport.show_preview_node((x, y, z))
+        else:
+            # Antes del primer clic, solo mostrar preview node
+            self._viewport.show_preview_node((x, y, z))
+
+    def _update_shell_preview(self, x: float, y: float, z: float) -> None:
+        """Actualiza preview progresiva de shell durante movimiento del mouse."""
+        # Construir lista temporal: nodos confirmados + cursor actual
+        preview_pts = list(self._shell_coords) + [(x, y, z)]
+        self._viewport.show_preview_shell_lines(preview_pts)
+        self._viewport.show_preview_node((x, y, z))
 
     def _on_new_model(self) -> None:
         self._model.clear()
@@ -720,7 +1231,8 @@ class MainWindow(QMainWindow):
         """Refresca tree, viewport y statusbar."""
         self._tree.refresh(self._model)
         self._viewport.display_model(self._model)
-        self._viewport.enable_picking(self._model)
+        if self._interaction_mode == InteractionMode.SELECT:
+            self._viewport.enable_picking(self._model)
         self._update_statusbar()
 
     def _refresh_viewport(self) -> None:
@@ -740,6 +1252,19 @@ class MainWindow(QMainWindow):
         self._viewport.display_model(self._model)
         state = "activadas" if checked else "desactivadas"
         self._console.log(f"Flechas de carga {state}.")
+
+    def _on_toggle_snap(self, checked: bool) -> None:
+        """Toggle snap a grilla."""
+        self._snap_mgr.enabled = checked
+        # Sincronizar toolbar y menú
+        self._act_snap.blockSignals(True)
+        self._act_snap.setChecked(checked)
+        self._act_snap.blockSignals(False)
+        self._act_snap_menu.blockSignals(True)
+        self._act_snap_menu.setChecked(checked)
+        self._act_snap_menu.blockSignals(False)
+        state = "activado" if checked else "desactivado"
+        self._console.log(f"Snap {state} (grilla: {self._snap_mgr.spacing})")
 
     def _on_viewport_pick(self, category: str, tag: int) -> None:
         """Maneja la selección de un objeto en el viewport."""
@@ -814,3 +1339,36 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event) -> None:
         self._viewport.close()
         super().closeEvent(event)
+
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        """Intercepta eventos del viewport VTK para capturar teclas globales."""
+        if event.type() == QEvent.Type.KeyPress:
+            self.keyPressEvent(event)
+            if event.isAccepted():
+                return True
+        return super().eventFilter(obj, event)
+
+    def keyPressEvent(self, event) -> None:
+        """Maneja atajos de teclado globales."""
+        if event.key() == Qt.Key.Key_Escape:
+            if self._interaction_mode == InteractionMode.DRAW_FRAME and self._frame_first_node is not None:
+                self._frame_first_node = None
+                self._frame_first_coords = None
+                self._viewport.clear_all_previews()
+                self._console.log("Frame cancelado — esperando primer nodo.")
+                return
+            if self._interaction_mode == InteractionMode.DRAW_SHELL and self._shell_nodes:
+                self._shell_nodes.clear()
+                self._shell_coords.clear()
+                self._viewport.clear_all_previews()
+                self._console.log("Shell cancelado — esperando primer nodo.")
+                return
+            if self._interaction_mode != InteractionMode.SELECT:
+                self.set_mode(InteractionMode.SELECT)
+                return
+        elif event.key() == Qt.Key.Key_R:
+            if self._interaction_mode == InteractionMode.DRAW_NODE:
+                self._reset_offset()
+                self._console.log("Offset reseteado a (0, 0, 0)")
+                return
+        super().keyPressEvent(event)

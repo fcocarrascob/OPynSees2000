@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pyvista as pv
 from pyvistaqt import QtInteractor
-from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtCore import Signal, Qt, QTimer, QEvent
+from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
 
 if TYPE_CHECKING:
     from gui.core.model_data import StructuralModel, AnalysisResult
@@ -41,12 +41,28 @@ COLOR_LOAD_MOMENT = "#7B1FA2"     # morado — momentos
 COLOR_HIGHLIGHT = "#FFD600"       # amarillo — selección
 COLOR_LABEL = "#212121"           # negro/gris oscuro
 
+# Nombres de actores de preview
+_PREVIEW_SNAP = "_preview_snap"
+_PREVIEW_NODE = "_preview_node"
+_PREVIEW_OFFSET = "_preview_offset"
+_PREVIEW_LINE = "_preview_line"
+_PREVIEW_SHELL_LINES = "_preview_shell_lines"
+
+COLOR_SNAP_INDICATOR = "#4CAF50"  # verde — snap indicator
+COLOR_PREVIEW_NODE = "#FF9800"    # naranja — nodo preview
+COLOR_PREVIEW_OFFSET = "#9E9E9E"  # gris — línea de offset
+COLOR_PREVIEW = "#FF9800"         # naranja — preview líneas/shells
+
 
 class VTKViewport(QWidget):
     """Widget con el viewport 3D de PyVista."""
 
     # Señal emitida al hacer clic en un nodo/elemento: (category, tag)
     item_picked = Signal(str, int)
+
+    # Señales para modo dibujo
+    drawing_click = Signal(float, float, float)       # clic con coords mundo (snapped)
+    drawing_mouse_move = Signal(float, float, float)   # movimiento con coords mundo (snapped)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -58,6 +74,9 @@ class VTKViewport(QWidget):
         self.plotter = QtInteractor(self)
         self._layout.addWidget(self.plotter)
 
+        # Interceptar eventos del plotter para modo dibujo
+        self.plotter.installEventFilter(self)
+
         # Configuración base del renderer
         self._setup_renderer()
 
@@ -66,6 +85,18 @@ class VTKViewport(QWidget):
         self._show_loads = False
         self._selected_tag: int | None = None
         self._selected_category: str | None = None
+        self._drawing_mode = False
+        self._snap_mgr: "SnapManager | None" = None
+
+        # Working plane Z para proyección de rayos
+        self._working_plane_z: float = 0.0
+
+        # Throttle para mouse move (50ms)
+        self._move_timer = QTimer(self)
+        self._move_timer.setSingleShot(True)
+        self._move_timer.setInterval(50)
+        self._move_timer.timeout.connect(self._emit_throttled_move)
+        self._pending_move_coords: tuple[float, float, float] | None = None
 
     # ------------------------------------------------------------------
     # Setup
@@ -594,6 +625,279 @@ class VTKViewport(QWidget):
             picker="cell",
             tolerance=0.025,
         )
+
+    def disable_picking(self) -> None:
+        """Deshabilita el picking interactivo."""
+        self.plotter.disable_picking()
+
+    def set_drawing_mode(self, active: bool) -> None:
+        """Establece si el viewport está en modo dibujo."""
+        self._drawing_mode = active
+
+    def set_snap_manager(self, mgr) -> None:
+        """Registra el snap manager para uso durante dibujo."""
+        self._snap_mgr = mgr
+
+    def set_working_plane_z(self, z: float) -> None:
+        """Establece la elevación del plano de trabajo para proyección."""
+        self._working_plane_z = z
+
+    def _screen_to_world(self, screen_x: int, screen_y: int) -> tuple[float, float, float] | None:
+        """
+        Convierte coordenadas de pantalla a coordenadas del mundo 3D,
+        proyectando el rayo de la cámara sobre el plano Z = _working_plane_z.
+
+        Retorna None si el rayo es paralelo al plano.
+        """
+        renderer = self.plotter.renderer
+
+        # Obtener dimensiones del viewport
+        size = self.plotter.window_size
+        if size[0] == 0 or size[1] == 0:
+            return None
+
+        # Normalizar coordenadas de pantalla [0, 1]
+        # Qt da Y desde arriba; VTK espera Y desde abajo
+        display_x = screen_x
+        display_y = size[1] - screen_y
+
+        # Usar VTK picker para obtener el punto en el plano de trabajo
+        # Crear un WorldPointPicker
+        picker = self.plotter.renderer.GetRenderWindow().GetInteractor()
+        if picker is None:
+            return None
+
+        # Método alternativo: ray casting manual
+        # Obtener posición y dirección del rayo de la cámara
+        camera = renderer.GetActiveCamera()
+        if camera is None:
+            return None
+
+        # Coordenadas normalizadas del viewport
+        vp = renderer.GetViewport()
+        vp_width = size[0] * (vp[2] - vp[0])
+        vp_height = size[1] * (vp[3] - vp[1])
+
+        if vp_width == 0 or vp_height == 0:
+            return None
+
+        # Display to normalized viewport
+        norm_x = (display_x - size[0] * vp[0]) / vp_width
+        norm_y = (display_y - size[1] * vp[1]) / vp_height
+
+        # Usar el coordinate converter de VTK
+        coord = renderer.GetActiveCamera().GetPosition()
+        focal = renderer.GetActiveCamera().GetFocalPoint()
+
+        import vtk
+        # Convertir display coords a world coords en near/far planes
+        renderer.SetDisplayPoint(display_x, display_y, 0.0)
+        renderer.DisplayToWorld()
+        near_point = list(renderer.GetWorldPoint()[:3])
+
+        renderer.SetDisplayPoint(display_x, display_y, 1.0)
+        renderer.DisplayToWorld()
+        wp = renderer.GetWorldPoint()
+        if wp[3] != 0:
+            far_point = [wp[i] / wp[3] for i in range(3)]
+        else:
+            far_point = list(wp[:3])
+
+        # Ray direction
+        ray_dir = [far_point[i] - near_point[i] for i in range(3)]
+
+        # Intersect with Z = _working_plane_z
+        # near_point + t * ray_dir = (x, y, _working_plane_z)
+        # near_point[2] + t * ray_dir[2] = _working_plane_z
+        if abs(ray_dir[2]) < 1e-12:
+            return None  # Rayo paralelo al plano
+
+        t = (self._working_plane_z - near_point[2]) / ray_dir[2]
+        world_x = near_point[0] + t * ray_dir[0]
+        world_y = near_point[1] + t * ray_dir[1]
+        world_z = self._working_plane_z
+
+        return (world_x, world_y, world_z)
+
+    def _apply_snap(self, coords: tuple[float, float, float]) -> tuple[float, float, float]:
+        """Aplica snap si está habilitado."""
+        if self._snap_mgr and self._snap_mgr.enabled:
+            return self._snap_mgr.snap_point(coords)
+        return coords
+
+    def mousePressEvent(self, event) -> None:
+        """Captura clics en modo dibujo; delega al plotter en modo selección."""
+        if self._drawing_mode and event.button() == Qt.MouseButton.LeftButton:
+            # Obtener posición del widget interior (plotter)
+            pos = self.plotter.mapFromParent(event.pos())
+            coords = self._screen_to_world(pos.x(), pos.y())
+            if coords is not None:
+                snapped = self._apply_snap(coords)
+                self.drawing_click.emit(snapped[0], snapped[1], snapped[2])
+            return  # No propagar al plotter
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:
+        """Captura movimiento en modo dibujo para preview."""
+        if self._drawing_mode:
+            pos = self.plotter.mapFromParent(event.pos())
+            coords = self._screen_to_world(pos.x(), pos.y())
+            if coords is not None:
+                snapped = self._apply_snap(coords)
+                self._pending_move_coords = snapped
+                if not self._move_timer.isActive():
+                    self._move_timer.start()
+            return
+        super().mouseMoveEvent(event)
+
+    def _emit_throttled_move(self) -> None:
+        """Emite la señal de movimiento con throttle de 50ms."""
+        if self._pending_move_coords is not None:
+            x, y, z = self._pending_move_coords
+            self.drawing_mouse_move.emit(x, y, z)
+            self._pending_move_coords = None
+
+    # ------------------------------------------------------------------
+    # Preview rendering (snap indicator)
+    # ------------------------------------------------------------------
+
+    def show_snap_indicator(self, coords: tuple[float, float, float]) -> None:
+        """Muestra un indicador (cruz) en el punto de snap."""
+        self.plotter.remove_actor(_PREVIEW_SNAP, render=False)
+        size = 0.15
+        x, y, z = coords
+        points = np.array([
+            [x - size, y, z], [x + size, y, z],
+            [x, y - size, z], [x, y + size, z],
+            [x, y, z - size], [x, y, z + size],
+        ], dtype=float)
+        lines = np.array([2, 0, 1, 2, 2, 3, 2, 4, 5])
+        mesh = pv.PolyData(points, lines=lines)
+        self.plotter.add_mesh(
+            mesh,
+            color=COLOR_SNAP_INDICATOR,
+            line_width=2,
+            name=_PREVIEW_SNAP,
+        )
+        self.plotter.render()
+
+    def clear_snap_indicator(self) -> None:
+        """Elimina el actor de snap indicator."""
+        self.plotter.remove_actor(_PREVIEW_SNAP, render=False)
+        self.plotter.render()
+
+    def show_preview_node(self, coords: tuple[float, float, float]) -> None:
+        """Muestra una esfera naranja preview en la posición dada."""
+        self.plotter.remove_actor(_PREVIEW_NODE, render=False)
+        x, y, z = coords
+        sphere = pv.Sphere(radius=0.12, center=(x, y, z))
+        self.plotter.add_mesh(
+            sphere,
+            color=COLOR_PREVIEW_NODE,
+            opacity=0.85,
+            name=_PREVIEW_NODE,
+        )
+        self.plotter.render()
+
+    def show_offset_preview(
+        self,
+        base: tuple[float, float, float],
+        final: tuple[float, float, float],
+    ) -> None:
+        """Muestra una línea gris desde base hasta final (offset preview)."""
+        self.plotter.remove_actor(_PREVIEW_OFFSET, render=False)
+        if base == final:
+            return
+        points = np.array([list(base), list(final)], dtype=float)
+        lines = np.array([2, 0, 1])
+        mesh = pv.PolyData(points, lines=lines)
+        self.plotter.add_mesh(
+            mesh,
+            color=COLOR_PREVIEW_OFFSET,
+            line_width=2,
+            opacity=0.7,
+            name=_PREVIEW_OFFSET,
+        )
+        self.plotter.render()
+
+    def show_preview_line(
+        self,
+        start: tuple[float, float, float],
+        end: tuple[float, float, float],
+    ) -> None:
+        """Muestra una línea preview entre dos puntos (para frames)."""
+        self.plotter.remove_actor(_PREVIEW_LINE, render=False)
+        line = pv.Line(pointa=start, pointb=end)
+        self.plotter.add_mesh(
+            line,
+            color=COLOR_PREVIEW,
+            line_width=3,
+            render_lines_as_tubes=True,
+            opacity=0.7,
+            name=_PREVIEW_LINE,
+        )
+        self.plotter.render()
+
+    def show_preview_shell_lines(
+        self, points: list[tuple[float, float, float]]
+    ) -> None:
+        """Muestra líneas preview progresivas para shell (1-4 puntos)."""
+        self.plotter.remove_actor(_PREVIEW_SHELL_LINES, render=False)
+        if len(points) < 2:
+            self.plotter.render()
+            return
+
+        pts = np.array(points, dtype=float)
+        n = len(pts)
+        line_cells = []
+        for i in range(n - 1):
+            line_cells.extend([2, i, i + 1])
+        # Cerrar si hay 4 puntos (quad completo)
+        if n == 4:
+            line_cells.extend([2, n - 1, 0])
+
+        mesh = pv.PolyData(pts, lines=np.array(line_cells))
+        self.plotter.add_mesh(
+            mesh,
+            color=COLOR_PREVIEW,
+            line_width=3,
+            render_lines_as_tubes=True,
+            opacity=0.7,
+            name=_PREVIEW_SHELL_LINES,
+        )
+        self.plotter.render()
+
+    def clear_all_previews(self) -> None:
+        """Elimina todos los actores de preview."""
+        for name in (
+            _PREVIEW_SNAP,
+            _PREVIEW_NODE,
+            _PREVIEW_OFFSET,
+            _PREVIEW_LINE,
+            _PREVIEW_SHELL_LINES,
+        ):
+            self.plotter.remove_actor(name, render=False)
+        self.plotter.render()
+
+    def eventFilter(self, obj, event) -> bool:
+        """Intercepta eventos del plotter para capturar clics en modo dibujo."""
+        if obj is self.plotter and self._drawing_mode:
+            if event.type() == QEvent.Type.MouseButtonPress:
+                if event.button() == Qt.MouseButton.LeftButton:
+                    coords = self._screen_to_world(event.pos().x(), event.pos().y())
+                    if coords is not None:
+                        snapped = self._apply_snap(coords)
+                        self.drawing_click.emit(snapped[0], snapped[1], snapped[2])
+                    return True  # consumir: no propagar clic izquierdo al interactor VTK
+            elif event.type() == QEvent.Type.MouseMove:
+                coords = self._screen_to_world(event.pos().x(), event.pos().y())
+                if coords is not None:
+                    snapped = self._apply_snap(coords)
+                    self._pending_move_coords = snapped
+                    if not self._move_timer.isActive():
+                        self._move_timer.start()
+                return False  # no consumir: permite rotación/pan con botón derecho
+        return super().eventFilter(obj, event)
 
     def close(self) -> None:
         self.plotter.close()
