@@ -1178,6 +1178,26 @@ class MainWindow(QMainWindow):
                 f"Sección creada: {sec.tag} — {sec.name} [{sec.sec_type.value}]"
             )
 
+            # Auto-asignar si es la primera sección y template no tiene sección
+            template = self._model.drawing_template
+            if len(self._model.sections) == 1:
+                if template.frame_section_tag is None:
+                    template.frame_section_tag = sec.tag
+                    self._console.log(
+                        f"✓ Sección {sec.name} auto-seleccionada para frames"
+                    )
+                if template.shell_section_tag is None:
+                    template.shell_section_tag = sec.tag
+                    self._console.log(
+                        f"✓ Sección {sec.name} auto-seleccionada para shells"
+                    )
+
+            # Refrescar panel si estamos en modo dibujo
+            if self._interaction_mode == InteractionMode.DRAW_FRAME:
+                self._properties.show_drawing_template(self._model, "frame")
+            elif self._interaction_mode == InteractionMode.DRAW_SHELL:
+                self._properties.show_drawing_template(self._model, "shell")
+
     def _on_define_transf(self) -> None:
         """Abre el diálogo para crear una nueva transformación."""
         dlg = TransfDialog(
@@ -1191,6 +1211,18 @@ class MainWindow(QMainWindow):
             self._console.log_success(
                 f"Transformación creada: {transf.tag} — {transf.transf_type.value}"
             )
+
+            # Auto-asignar si es la primera transformación
+            template = self._model.drawing_template
+            if len(self._model.geom_transfs) == 1 and template.frame_transf_tag is None:
+                template.frame_transf_tag = transf.tag
+                self._console.log(
+                    f"✓ Transformación Tag {transf.tag} auto-seleccionada para frames"
+                )
+
+            # Refrescar panel si estamos en modo dibujo frame
+            if self._interaction_mode == InteractionMode.DRAW_FRAME:
+                self._properties.show_drawing_template(self._model, "frame")
 
     def _on_define_pattern(self) -> None:
         """Abre el diálogo para crear un patrón de carga."""

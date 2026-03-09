@@ -711,8 +711,8 @@ And replace the **entire block** with:
 
 Add auto-selection of the first section/transformation created, and refresh the Properties Panel when new sections or transformations are created while in a drawing mode.
 
-- [ ] Open `gui/main_window.py`
-- [ ] Modify `_on_define_section()` to auto-assign and refresh the panel. Find:
+- [x] Open `gui/main_window.py`
+- [x] Modify `_on_define_section()` to auto-assign and refresh the panel. Find:
 
 ```python
     def _on_define_section(self) -> None:
@@ -770,7 +770,7 @@ And replace with:
                 self._properties.show_drawing_template(self._model, "shell")
 ```
 
-- [ ] Modify `_on_define_transf()` similarly. Find:
+- [x] Modify `_on_define_transf()` similarly. Find:
 
 ```python
     def _on_define_transf(self) -> None:
