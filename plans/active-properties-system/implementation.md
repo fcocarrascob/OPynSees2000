@@ -637,8 +637,8 @@ And replace with:
 
 Update the status bar in `set_mode()` to show active drawing properties when in DRAW_FRAME or DRAW_SHELL mode.
 
-- [ ] Open `gui/main_window.py`
-- [ ] Find the status bar message in the `else` branch of `set_mode()`. Locate this block that was modified in Step 3:
+- [x] Open `gui/main_window.py`
+- [x] Find the status bar message in the `else` branch of `set_mode()`. Locate this block that was modified in Step 3:
 
 ```python
             snap = self._snap_mgr.status_text()

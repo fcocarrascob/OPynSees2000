@@ -618,8 +618,31 @@ class MainWindow(QMainWindow):
             }
             mode_label = mode_names.get(mode, "")
             snap = self._snap_mgr.status_text()
+
+            # Construir info de propiedades activas para status bar
+            props_info = ""
+            if mode == InteractionMode.DRAW_FRAME:
+                template = self._model.drawing_template
+                section_name = "(sin asignar)"
+                if template.frame_section_tag:
+                    sec = self._model.sections.get(template.frame_section_tag)
+                    if sec:
+                        section_name = sec.name
+                transf_name = "(sin asignar)"
+                if template.frame_transf_tag:
+                    transf_name = f"Tag {template.frame_transf_tag}"
+                props_info = f"  |  Sección: {section_name}  |  Transf: {transf_name}"
+            elif mode == InteractionMode.DRAW_SHELL:
+                template = self._model.drawing_template
+                section_name = "(sin asignar)"
+                if template.shell_section_tag:
+                    sec = self._model.sections.get(template.shell_section_tag)
+                    if sec:
+                        section_name = sec.name
+                props_info = f"  |  Sección: {section_name}"
+
             self.statusBar().showMessage(
-                f"Modo: {mode_label}  |  {snap}  |  "
+                f"Modo: {mode_label}  |  {snap}{props_info}  |  "
                 f"Clic en viewport para crear  |  Escape \u2192 Selecci\u00f3n"
             )
 
