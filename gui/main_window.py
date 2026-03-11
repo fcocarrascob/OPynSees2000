@@ -605,6 +605,7 @@ class MainWindow(QMainWindow):
             self._viewport.set_drawing_mode(False)
             self._viewport.clear_all_previews()
             self._viewport.hide_working_plane_visual()
+            self._viewport.set_plane_filter("Free", 0.0)  # Show all elements
             self._set_offset_widgets_visible(False)
             self._properties.clear()
             self._update_statusbar()
@@ -618,6 +619,12 @@ class MainWindow(QMainWindow):
             self._snap_mgr.spacing = template.snap_spacing
             # Sincronizar plano de raycasting con template
             self._viewport.set_working_plane(
+                template.working_plane_mode,
+                template.working_plane_elevation,
+            )
+
+            # Sincronizar filtro de visibilidad por plano
+            self._viewport.set_plane_filter(
                 template.working_plane_mode,
                 template.working_plane_elevation,
             )
@@ -731,6 +738,12 @@ class MainWindow(QMainWindow):
 
             # Actualizar plano de raycasting para proyección
             self._viewport.set_working_plane(
+                template.working_plane_mode,
+                template.working_plane_elevation,
+            )
+
+            # Actualizar filtro de visibilidad por plano
+            self._viewport.set_plane_filter(
                 template.working_plane_mode,
                 template.working_plane_elevation,
             )

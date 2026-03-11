@@ -93,6 +93,11 @@ class VTKViewport(QWidget):
         self._working_plane_mode: str = "XY"   # "XY", "XZ", "YZ", "Free"
         self._working_plane_elevation: float = 0.0
 
+        # Plane filter state for element visibility
+        self._plane_filter_mode: str = "Free"   # "XY", "XZ", "YZ", "Free"
+        self._plane_filter_elevation: float = 0.0
+        self._model_ref: "StructuralModel | None" = None  # Reference for re-filtering
+
         # Renderer del plano de trabajo visual
         self._working_plane_renderer: WorkingPlaneRenderer | None = None
 
@@ -127,6 +132,7 @@ class VTKViewport(QWidget):
 
     def display_model(self, model: StructuralModel) -> None:
         """Renderiza el modelo completo en el viewport."""
+        self._model_ref = model  # Keep reference for re-filtering
         self.plotter.clear()
 
         if not model.nodes:
@@ -152,6 +158,32 @@ class VTKViewport(QWidget):
         self.plotter.reset_camera()
         self.plotter.camera_position = "iso"
         self.plotter.camera.zoom(0.85)
+
+    # ------------------------------------------------------------------
+    # Plane Filtering Helpers
+    # ------------------------------------------------------------------
+
+    def _node_in_active_plane(self, node) -> bool:
+        """Determine if node is exactly in the active plane."""
+        if self._plane_filter_mode == "Free":
+            return True
+        elif self._plane_filter_mode == "XY":
+            return node.z == self._plane_filter_elevation
+        elif self._plane_filter_mode == "XZ":
+            return node.y == self._plane_filter_elevation
+        elif self._plane_filter_mode == "YZ":
+            return node.x == self._plane_filter_elevation
+        return True
+
+    def _element_in_active_plane(self, element, model) -> bool:
+        """Determine if ALL nodes of element are in the active plane."""
+        if self._plane_filter_mode == "Free":
+            return True
+        for nt in element.node_tags:
+            node = model.nodes.get(nt)
+            if node is None or not self._node_in_active_plane(node):
+                return False
+        return True
 
     # ------------------------------------------------------------------
     # Grilla de piso
@@ -227,6 +259,9 @@ class VTKViewport(QWidget):
         for elem in model.elements.values():
             if elem.is_shell:
                 continue
+            # Plane filter: skip if not in active plane
+            if not self._element_in_active_plane(elem, model):
+                continue
             ni = model.nodes.get(elem.node_i)
             nj = model.nodes.get(elem.node_j)
             if ni is None or nj is None:
@@ -292,6 +327,9 @@ class VTKViewport(QWidget):
         for elem in model.elements.values():
             if not elem.is_shell:
                 continue
+            # Plane filter: skip if not in active plane
+            if not self._element_in_active_plane(elem, model):
+                continue
             nodes = []
             for nt in elem.node_tags:
                 n = model.nodes.get(nt)
@@ -329,11 +367,11 @@ class VTKViewport(QWidget):
     # ------------------------------------------------------------------
 
     def _add_nodes(self, model: StructuralModel) -> None:
-        """Dibuja esferas en cada nodo libre (no empotrado)."""
+        """Dibuja esferas en cada nodo libre (no empotrado), filtrado por plano."""
         free_coords = [
             [n.x, n.y, n.z]
             for n in model.nodes.values()
-            if not n.is_fully_fixed
+            if not n.is_fully_fixed and self._node_in_active_plane(n)
         ]
         if not free_coords:
             return
@@ -355,11 +393,11 @@ class VTKViewport(QWidget):
     # ------------------------------------------------------------------
 
     def _add_supports(self, model: StructuralModel) -> None:
-        """Dibuja conos invertidos en nodos empotrados."""
+        """Dibuja conos invertidos en nodos empotrados, filtrado por plano."""
         fixed_coords = [
             [n.x, n.y, n.z]
             for n in model.nodes.values()
-            if n.is_fully_fixed
+            if n.is_fully_fixed and self._node_in_active_plane(n)
         ]
         if not fixed_coords:
             return
@@ -422,6 +460,8 @@ class VTKViewport(QWidget):
         points = []
         labels = []
         for tag, node in model.nodes.items():
+            if not self._node_in_active_plane(node):
+                continue
             points.append([node.x, node.y, node.z])
             labels.append(str(tag))
 
@@ -446,6 +486,8 @@ class VTKViewport(QWidget):
         labels = []
 
         for tag, elem in model.elements.items():
+            if not self._element_in_active_plane(elem, model):
+                continue
             ni = model.nodes.get(elem.node_i)
             nj = model.nodes.get(elem.node_j)
             if ni is None or nj is None:
@@ -488,6 +530,8 @@ class VTKViewport(QWidget):
             for load in pattern.loads:
                 node = model.nodes.get(load.node_tag)
                 if node is None:
+                    continue
+                if not self._node_in_active_plane(node):
                     continue
                 origin = [node.x, node.y, node.z]
 
@@ -661,6 +705,23 @@ class VTKViewport(QWidget):
         """
         self._working_plane_mode = mode
         self._working_plane_elevation = elevation
+
+    def set_plane_filter(self, mode: str, elevation: float) -> None:
+        """Update plane filter and re-render model.
+
+        Parameters
+        ----------
+        mode : str
+            "XY", "XZ", "YZ" o "Free".
+        elevation : float
+            Elevación del eje bloqueado.
+        """
+        self._plane_filter_mode = mode
+        self._plane_filter_elevation = elevation
+
+        # Re-render if model is loaded
+        if self._model_ref is not None:
+            self.display_model(self._model_ref)
 
     def update_working_plane_visual(
         self,

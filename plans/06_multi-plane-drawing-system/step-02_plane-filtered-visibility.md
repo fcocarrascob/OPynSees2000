@@ -12,8 +12,8 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
 
 #### 2.1 — Add plane filter state and model reference to VTKViewport.__init__
 
-- [ ] Open `gui/viewport/vtk_widget.py`
-- [ ] Find the working plane state variables added in Step 1 (inside `__init__`):
+- [x] Open `gui/viewport/vtk_widget.py`
+- [x] Find the working plane state variables added in Step 1 (inside `__init__`):
 
 ```python
         # Working plane state for ray-casting projection
@@ -21,7 +21,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
         self._working_plane_elevation: float = 0.0
 ```
 
-- [ ] Immediately after those lines, add:
+- [x] Immediately after those lines, add:
 
 ```python
         # Plane filter state for element visibility
@@ -34,7 +34,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
 
 #### 2.2 — Add plane filtering helper methods
 
-- [ ] In `gui/viewport/vtk_widget.py`, add the following two methods right before the `_add_floor_grid` method (around line 127, before the comment `# Grilla de piso`):
+- [x] In `gui/viewport/vtk_widget.py`, add the following two methods right before the `_add_floor_grid` method (around line 127, before the comment `# Grilla de piso`):
 
 ```python
     # ------------------------------------------------------------------
@@ -69,7 +69,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
 
 #### 2.3 — Modify `display_model` to store model reference
 
-- [ ] Find the `display_model` method:
+- [x] Find the `display_model` method:
 
 ```python
     def display_model(self, model: StructuralModel) -> None:
@@ -77,7 +77,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
         self.plotter.clear()
 ```
 
-- [ ] Replace it with:
+- [x] Replace it with:
 
 ```python
     def display_model(self, model: StructuralModel) -> None:
@@ -90,7 +90,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
 
 #### 2.4 — Add plane filter to `_add_elements`
 
-- [ ] Find the `_add_elements` method. Locate the for loop that iterates over elements. The current code starts with:
+- [x] Find the `_add_elements` method. Locate the for loop that iterates over elements. The current code starts with:
 
 ```python
         for elem in model.elements.values():
@@ -100,7 +100,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
             nj = model.nodes.get(elem.node_j)
 ```
 
-- [ ] Replace it with (adding the filter check):
+- [x] Replace it with (adding the filter check):
 
 ```python
         for elem in model.elements.values():
@@ -117,7 +117,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
 
 #### 2.5 — Add plane filter to `_add_shells`
 
-- [ ] Find the `_add_shells` method. Locate the for loop:
+- [x] Find the `_add_shells` method. Locate the for loop:
 
 ```python
         for elem in model.elements.values():
@@ -127,7 +127,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
             for nt in elem.node_tags:
 ```
 
-- [ ] Replace it with:
+- [x] Replace it with:
 
 ```python
         for elem in model.elements.values():
@@ -144,7 +144,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
 
 #### 2.6 — Add plane filter to `_add_nodes`
 
-- [ ] Find the `_add_nodes` method:
+- [x] Find the `_add_nodes` method:
 
 ```python
     def _add_nodes(self, model: StructuralModel) -> None:
@@ -156,7 +156,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
         ]
 ```
 
-- [ ] Replace with:
+- [x] Replace with:
 
 ```python
     def _add_nodes(self, model: StructuralModel) -> None:
@@ -172,7 +172,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
 
 #### 2.7 — Add plane filter to `_add_supports`
 
-- [ ] Find the `_add_supports` method:
+- [x] Find the `_add_supports` method:
 
 ```python
     def _add_supports(self, model: StructuralModel) -> None:
@@ -184,7 +184,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
         ]
 ```
 
-- [ ] Replace with:
+- [x] Replace with:
 
 ```python
     def _add_supports(self, model: StructuralModel) -> None:
@@ -200,7 +200,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
 
 #### 2.8 — Add plane filter to `_add_node_labels`
 
-- [ ] Find the `_add_node_labels` method. The current iteration is:
+- [x] Find the `_add_node_labels` method. The current iteration is:
 
 ```python
         points = []
@@ -210,7 +210,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
             labels.append(str(tag))
 ```
 
-- [ ] Replace with:
+- [x] Replace with:
 
 ```python
         points = []
@@ -226,7 +226,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
 
 #### 2.9 — Add plane filter to `_add_element_labels`
 
-- [ ] Find the `_add_element_labels` method. The current iteration is:
+- [x] Find the `_add_element_labels` method. The current iteration is:
 
 ```python
         for tag, elem in model.elements.items():
@@ -236,7 +236,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
                 continue
 ```
 
-- [ ] Replace with:
+- [x] Replace with:
 
 ```python
         for tag, elem in model.elements.items():
@@ -252,7 +252,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
 
 #### 2.10 — Add plane filter to `_add_load_arrows`
 
-- [ ] Find the `_add_load_arrows` method. Inside the nested loops, after getting the node:
+- [x] Find the `_add_load_arrows` method. Inside the nested loops, after getting the node:
 
 ```python
                 node = model.nodes.get(load.node_tag)
@@ -261,7 +261,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
                 origin = [node.x, node.y, node.z]
 ```
 
-- [ ] Replace with:
+- [x] Replace with:
 
 ```python
                 node = model.nodes.get(load.node_tag)
@@ -276,7 +276,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
 
 #### 2.11 — Add `set_plane_filter` public method
 
-- [ ] In `gui/viewport/vtk_widget.py`, find the `set_working_plane` method added in Step 1 and add the following new method right after it:
+- [x] In `gui/viewport/vtk_widget.py`, find the `set_working_plane` method added in Step 1 and add the following new method right after it:
 
 ```python
     def set_plane_filter(self, mode: str, elevation: float) -> None:
@@ -301,8 +301,8 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
 
 #### 2.12 — Connect plane filter to `MainWindow._on_snap_setting_changed`
 
-- [ ] Open `gui/main_window.py`
-- [ ] Find the `_on_snap_setting_changed` method. After the existing `set_working_plane` call (added in Step 1), add the plane filter update. The block should look like:
+- [x] Open `gui/main_window.py`
+- [x] Find the `_on_snap_setting_changed` method. After the existing `set_working_plane` call (added in Step 1), add the plane filter update. The block should look like:
 
 ```python
         # Actualizar visual del plano de trabajo
@@ -320,7 +320,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
             )
 ```
 
-- [ ] Add right after the `set_working_plane` call:
+- [x] Add right after the `set_working_plane` call:
 
 ```python
             # Actualizar filtro de visibilidad por plano
@@ -334,7 +334,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
 
 #### 2.13 — Set plane filter when entering drawing mode
 
-- [ ] In `gui/main_window.py`, find the `set_mode` method where the working plane is synced (the lines added in Step 1):
+- [x] In `gui/main_window.py`, find the `set_mode` method where the working plane is synced (the lines added in Step 1):
 
 ```python
             # Sincronizar plano de raycasting con template
@@ -344,7 +344,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
             )
 ```
 
-- [ ] Add right after:
+- [x] Add right after:
 
 ```python
             # Sincronizar filtro de visibilidad por plano
@@ -358,7 +358,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
 
 #### 2.14 — Reset plane filter when returning to SELECT mode
 
-- [ ] In the `set_mode` method, find the SELECT mode block:
+- [x] In the `set_mode` method, find the SELECT mode block:
 
 ```python
         if mode == InteractionMode.SELECT:
@@ -371,7 +371,7 @@ Step 1 (Fix Ray-Casting) must be completed and committed.
             self._update_statusbar()
 ```
 
-- [ ] Add the plane filter reset right before `self._properties.clear()`:
+- [x] Add the plane filter reset right before `self._properties.clear()`:
 
 ```python
         if mode == InteractionMode.SELECT:
