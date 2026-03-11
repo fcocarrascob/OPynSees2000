@@ -12,8 +12,8 @@ Steps 1-4 must be completed and committed.
 
 The VTK event filter in `vtk_widget.py` needs to detect whether Shift is held when a drawing click occurs and pass that info. We'll change the `drawing_click` signal to include the modifier state.
 
-- [ ] Open `gui/viewport/vtk_widget.py`
-- [ ] Find the signal declarations near the top of `VTKViewport`:
+- [x] Open `gui/viewport/vtk_widget.py`
+- [x] Find the signal declarations near the top of `VTKViewport`:
 
 ```python
     # Señales para modo dibujo
@@ -29,7 +29,7 @@ Replace with:
     drawing_mouse_move = Signal(float, float, float)   # movimiento con coords mundo (snapped)
 ```
 
-- [ ] Find the `eventFilter` method (around line 883). In the mouse click handling branch, update to detect Shift and pass it. Replace the existing block:
+- [x] Find the `eventFilter` method (around line 883). In the mouse click handling branch, update to detect Shift and pass it. Replace the existing block:
 
 ```python
             if event.type() == QEvent.Type.MouseButtonPress:
@@ -54,7 +54,7 @@ With:
                     return True  # consumir: no propagar clic izquierdo al interactor VTK
 ```
 
-- [ ] Also find the `mousePressEvent` method. Update the same way. Replace:
+- [x] Also find the `mousePressEvent` method. Update the same way. Replace:
 
 ```python
     def mousePressEvent(self, event) -> None:
@@ -89,8 +89,8 @@ With:
 
 #### Step 5.2: Update MainWindow drawing_click connection
 
-- [ ] Open `gui/main_window.py`
-- [ ] Find the signal connection in `__init__`:
+- [x] Open `gui/main_window.py`
+- [x] Find the signal connection in `__init__`:
 
 ```python
         self._viewport.drawing_click.connect(self._on_drawing_click)
@@ -98,7 +98,7 @@ With:
 
 This stays the same — but we need to update the slot signature.
 
-- [ ] Find `_on_drawing_click` and replace:
+- [x] Find `_on_drawing_click` and replace:
 
 ```python
     def _on_drawing_click(self, x: float, y: float, z: float) -> None:
@@ -129,7 +129,7 @@ With:
 
 #### Step 5.3: Add the _resolve_snap_point method to MainWindow
 
-- [ ] Add the following method to `MainWindow`, right **before** `_on_drawing_click`:
+- [x] Add the following method to `MainWindow`, right **before** `_on_drawing_click`:
 
 ```python
     def _resolve_snap_point(
@@ -173,7 +173,7 @@ With:
 
 #### Step 5.4: Update _handle_draw_frame to use template tolerance
 
-- [ ] In `_handle_draw_frame`, find the **two** places where `tolerance=0.15` is used (for finding existing nodes). Replace them with `tolerance=template.snap_tolerance`.
+- [x] In `_handle_draw_frame`, find the **two** places where `tolerance=0.15` is used (for finding existing nodes). Replace them with `tolerance=template.snap_tolerance`.
 
 Find this block in the **first click** section:
 
@@ -202,7 +202,7 @@ Replace with:
 
 #### Step 5.5: Update _handle_draw_shell to use template tolerance
 
-- [ ] In `_handle_draw_shell`, find the line:
+- [x] In `_handle_draw_shell`, find the line:
 
 ```python
         existing = find_closest_node(self._model, (x, y, z), tolerance=0.15)
@@ -217,7 +217,7 @@ Replace with:
 
 #### Step 5.6: Add callback for snap settings changes and visual plane updates
 
-- [ ] In `MainWindow`, add this new method after `_resolve_snap_point`:
+- [x] In `MainWindow`, add this new method after `_resolve_snap_point`:
 
 ```python
     def _on_snap_setting_changed(self, field_name: str, value) -> None:
@@ -250,7 +250,7 @@ Replace with:
 
 #### Step 5.7: Add _update_drawing_statusbar helper
 
-- [ ] Add this method to `MainWindow` after `_on_snap_setting_changed`:
+- [x] Add this method to `MainWindow` after `_on_snap_setting_changed`:
 
 ```python
     def _update_drawing_statusbar(self) -> None:
@@ -306,7 +306,7 @@ Replace with:
 
 #### Step 5.8: Update set_mode to use new statusbar and show working plane
 
-- [ ] In the `set_mode()` method, find the `else:` branch (for drawing modes). Replace the entire block starting from `self._viewport.disable_picking()` down to and including the `self.statusBar().showMessage(...)` call. The new code should be:
+- [x] In the `set_mode()` method, find the `else:` branch (for drawing modes). Replace the entire block starting from `self._viewport.disable_picking()` down to and including the `self.statusBar().showMessage(...)` call. The new code should be:
 
 Find and replace this section (inside `set_mode`, the `else:` branch):
 
@@ -374,7 +374,7 @@ Replace with:
 
 #### Step 5.9: Update show_drawing_template calls to pass callback
 
-- [ ] In `set_mode()`, find the two calls to `self._properties.show_drawing_template(...)` at the bottom of the method. They currently look like:
+- [x] In `set_mode()`, find the two calls to `self._properties.show_drawing_template(...)` at the bottom of the method. They currently look like:
 
 ```python
             # Actualizar Properties Panel según modo de dibujo
@@ -386,8 +386,8 @@ Replace with:
 
 These remain unchanged. But the `show_snap_settings` inside `show_drawing_template` needs the callback. Update the `show_drawing_template` method in `properties_panel.py` to accept and pass the callback.
 
-- [ ] Open `gui/panels/properties_panel.py`
-- [ ] Update the `show_drawing_template` method signature to accept an optional callback:
+- [x] Open `gui/panels/properties_panel.py`
+- [x] Update the `show_drawing_template` method signature to accept an optional callback:
 
 Find:
 
@@ -410,7 +410,7 @@ Replace with:
     ) -> None:
 ```
 
-- [ ] Update the `show_snap_settings` call inside `show_drawing_template` (that was added in Step 4.3). Find:
+- [x] Update the `show_snap_settings` call inside `show_drawing_template` (that was added in Step 4.3). Find:
 
 ```python
         # Sección de configuración de snap
@@ -424,7 +424,7 @@ Replace with:
         self.show_snap_settings(model, mode, on_setting_changed=on_snap_setting_changed)
 ```
 
-- [ ] Back in `gui/main_window.py`, update the `show_drawing_template` calls in `set_mode()` to pass the callback:
+- [x] Back in `gui/main_window.py`, update the `show_drawing_template` calls in `set_mode()` to pass the callback:
 
 Find:
 
@@ -454,7 +454,7 @@ Replace with:
 
 #### Step 5.10: Hide working plane when returning to SELECT mode
 
-- [ ] In `set_mode()`, find the `if mode == InteractionMode.SELECT:` branch. After the line `self._viewport.clear_all_previews()`, add:
+- [x] In `set_mode()`, find the `if mode == InteractionMode.SELECT:` branch. After the line `self._viewport.clear_all_previews()`, add:
 
 ```python
             self._viewport.hide_working_plane_visual()
@@ -475,7 +475,7 @@ The SELECT branch should now look like:
 
 #### Step 5.11: Also update the _on_define_section and _on_define_transf refreshes
 
-- [ ] Find in `_on_define_section()` these lines at the bottom:
+- [x] Find in `_on_define_section()` these lines at the bottom:
 
 ```python
             # Refrescar panel si estamos en modo dibujo
@@ -501,7 +501,7 @@ Replace with:
                 )
 ```
 
-- [ ] Find in `_on_define_transf()` the line:
+- [x] Find in `_on_define_transf()` the line:
 
 ```python
             # Refrescar panel si estamos en modo dibujo frame
@@ -521,7 +521,7 @@ Replace with:
 ```
 
 ##### Step 5 Verification Checklist
-- [ ] No import errors: `python -c "from gui.main_window import MainWindow; print('OK')"`
+- [x] No import errors: `python -c "from gui.main_window import MainWindow; print('OK')"`
 - [ ] Application launches: `python -m gui`
 - [ ] **Working Plane XY test:**
   1. Enter "Dibujar Frame" mode

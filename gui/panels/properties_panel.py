@@ -184,6 +184,7 @@ class PropertiesPanel(QScrollArea):
         self,
         model: "StructuralModel",
         mode: str,
+        on_snap_setting_changed: "callable | None" = None,
     ) -> None:
         """Muestra propiedades editables para elementos a crear.
 
@@ -249,7 +250,7 @@ class PropertiesPanel(QScrollArea):
             self._layout.addWidget(hint)
 
         # Sección de configuración de snap
-        self.show_snap_settings(model, mode)
+        self.show_snap_settings(model, mode, on_setting_changed=on_snap_setting_changed)
 
         self._layout.addStretch()
 

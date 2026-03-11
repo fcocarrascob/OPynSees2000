@@ -62,7 +62,7 @@ class VTKViewport(QWidget):
     item_picked = Signal(str, int)
 
     # Señales para modo dibujo
-    drawing_click = Signal(float, float, float)       # clic con coords mundo (snapped)
+    drawing_click = Signal(float, float, float, bool)  # clic con coords mundo (snapped) + shift_pressed
     drawing_mouse_move = Signal(float, float, float)   # movimiento con coords mundo (snapped)
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -760,7 +760,8 @@ class VTKViewport(QWidget):
             coords = self._screen_to_world(pos.x(), pos.y())
             if coords is not None:
                 snapped = self._apply_snap(coords)
-                self.drawing_click.emit(snapped[0], snapped[1], snapped[2])
+                shift_pressed = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
+                self.drawing_click.emit(snapped[0], snapped[1], snapped[2], shift_pressed)
             return  # No propagar al plotter
         super().mousePressEvent(event)
 
@@ -914,7 +915,8 @@ class VTKViewport(QWidget):
                     coords = self._screen_to_world(event.pos().x(), event.pos().y())
                     if coords is not None:
                         snapped = self._apply_snap(coords)
-                        self.drawing_click.emit(snapped[0], snapped[1], snapped[2])
+                        shift_pressed = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
+                        self.drawing_click.emit(snapped[0], snapped[1], snapped[2], shift_pressed)
                     return True  # consumir: no propagar clic izquierdo al interactor VTK
             elif event.type() == QEvent.Type.MouseMove:
                 coords = self._screen_to_world(event.pos().x(), event.pos().y())

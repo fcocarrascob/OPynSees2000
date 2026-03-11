@@ -604,6 +604,7 @@ class MainWindow(QMainWindow):
             self._viewport.enable_picking(self._model)
             self._viewport.set_drawing_mode(False)
             self._viewport.clear_all_previews()
+            self._viewport.hide_working_plane_visual()
             self._set_offset_widgets_visible(False)
             self._properties.clear()
             self._update_statusbar()
@@ -611,46 +612,32 @@ class MainWindow(QMainWindow):
             self._viewport.disable_picking()
             self._viewport.set_drawing_mode(True)
             self._set_offset_widgets_visible(mode == InteractionMode.DRAW_NODE)
-            mode_names = {
-                InteractionMode.DRAW_NODE: "Dibujar Nodo",
-                InteractionMode.DRAW_FRAME: "Dibujar Frame",
-                InteractionMode.DRAW_SHELL: "Dibujar Shell",
-            }
-            mode_label = mode_names.get(mode, "")
-            snap = self._snap_mgr.status_text()
 
-            # Construir info de propiedades activas para status bar
-            props_info = ""
-            if mode == InteractionMode.DRAW_FRAME:
-                template = self._model.drawing_template
-                section_name = "(sin asignar)"
-                if template.frame_section_tag:
-                    sec = self._model.sections.get(template.frame_section_tag)
-                    if sec:
-                        section_name = sec.name
-                transf_name = "(sin asignar)"
-                if template.frame_transf_tag:
-                    transf_name = f"Tag {template.frame_transf_tag}"
-                props_info = f"  |  Sección: {section_name}  |  Transf: {transf_name}"
-            elif mode == InteractionMode.DRAW_SHELL:
-                template = self._model.drawing_template
-                section_name = "(sin asignar)"
-                if template.shell_section_tag:
-                    sec = self._model.sections.get(template.shell_section_tag)
-                    if sec:
-                        section_name = sec.name
-                props_info = f"  |  Sección: {section_name}"
+            # Sincronizar snap manager con template
+            template = self._model.drawing_template
+            self._snap_mgr.spacing = template.snap_spacing
 
-            self.statusBar().showMessage(
-                f"Modo: {mode_label}  |  {snap}{props_info}  |  "
-                f"Clic en viewport para crear  |  Escape \u2192 Selecci\u00f3n"
+            # Mostrar plano de trabajo visual
+            self._viewport.update_working_plane_visual(
+                template.working_plane_mode,
+                template.working_plane_elevation,
+                template.snap_spacing,
             )
+
+            # Actualizar status bar con info del plano
+            self._update_drawing_statusbar()
 
             # Actualizar Properties Panel según modo de dibujo
             if mode == InteractionMode.DRAW_FRAME:
-                self._properties.show_drawing_template(self._model, "frame")
+                self._properties.show_drawing_template(
+                    self._model, "frame",
+                    on_snap_setting_changed=self._on_snap_setting_changed,
+                )
             elif mode == InteractionMode.DRAW_SHELL:
-                self._properties.show_drawing_template(self._model, "shell")
+                self._properties.show_drawing_template(
+                    self._model, "shell",
+                    on_snap_setting_changed=self._on_snap_setting_changed,
+                )
 
         if old_mode != mode:
             self._console.log(f"Modo cambiado: {mode.name}")
@@ -671,14 +658,132 @@ class MainWindow(QMainWindow):
     # Slots
     # ------------------------------------------------------------------
 
-    def _on_drawing_click(self, x: float, y: float, z: float) -> None:
-        """Maneja clic en modo dibujo."""
+    def _resolve_snap_point(
+        self, x: float, y: float, z: float, shift_pressed: bool = False,
+    ) -> tuple[float, float, float]:
+        """
+        Resuelve el punto final de snap según el plano de trabajo activo.
+
+        Prioridad:
+        1. Snap a nodo existente (si snap_to_points_enabled y nodo cercano)
+        2. Shift override → Free 3D snap
+        3. Working plane snap
+        """
+        from gui.viewport.picking import find_closest_node
+
+        template = self._model.drawing_template
+
+        # Prioridad 1: Snap a nodo existente
+        if template.snap_to_points_enabled:
+            nearby = find_closest_node(
+                self._model, (x, y, z), tolerance=template.snap_tolerance,
+            )
+            if nearby is not None:
+                node = self._model.nodes[nearby]
+                return node.coords
+
+        # Prioridad 2: Shift override → Free 3D
+        if shift_pressed:
+            return self._snap_mgr.snap_with_plane(
+                x, y, z, "Free", 0.0, template.snap_spacing,
+            )
+
+        # Prioridad 3: Working plane snap
+        return self._snap_mgr.snap_with_plane(
+            x, y, z,
+            template.working_plane_mode,
+            template.working_plane_elevation,
+            template.snap_spacing,
+        )
+
+    def _on_drawing_click(self, x: float, y: float, z: float, shift_pressed: bool = False) -> None:
+        """Maneja clic en modo dibujo con soporte de plano de trabajo."""
+        template = self._model.drawing_template
+        snap_coords = self._resolve_snap_point(x, y, z, shift_pressed)
+
         if self._interaction_mode == InteractionMode.DRAW_NODE:
-            self._handle_draw_node(x, y, z)
+            self._handle_draw_node(snap_coords[0], snap_coords[1], snap_coords[2])
         elif self._interaction_mode == InteractionMode.DRAW_FRAME:
-            self._handle_draw_frame(x, y, z)
+            self._handle_draw_frame(snap_coords[0], snap_coords[1], snap_coords[2])
         elif self._interaction_mode == InteractionMode.DRAW_SHELL:
-            self._handle_draw_shell(x, y, z)
+            self._handle_draw_shell(snap_coords[0], snap_coords[1], snap_coords[2])
+
+    def _on_snap_setting_changed(self, field_name: str, value) -> None:
+        """Callback cuando cambia un setting de snap en el Properties Panel."""
+        template = self._model.drawing_template
+
+        # Actualizar snap manager spacing
+        if field_name == "snap_spacing":
+            self._snap_mgr.spacing = value
+
+        # Actualizar visual del plano de trabajo
+        if field_name in ("working_plane_mode", "working_plane_elevation", "snap_spacing"):
+            self._viewport.update_working_plane_visual(
+                template.working_plane_mode,
+                template.working_plane_elevation,
+                template.snap_spacing,
+            )
+
+            # Actualizar plano Z de raycasting para proyección
+            if template.working_plane_mode == "XY":
+                self._viewport.set_working_plane_z(template.working_plane_elevation)
+            elif template.working_plane_mode == "Free":
+                self._viewport.set_working_plane_z(0.0)
+            # Para XZ y YZ, el raycasting sigue proyectando a Z=working_plane_z
+            # pero el snap_with_plane corregirá el eje apropiado
+
+        # Actualizar status bar
+        self._update_drawing_statusbar()
+
+    def _update_drawing_statusbar(self) -> None:
+        """Actualiza la status bar con info del modo de dibujo actual."""
+        if self._interaction_mode == InteractionMode.SELECT:
+            self._update_statusbar()
+            return
+
+        template = self._model.drawing_template
+        mode_names = {
+            InteractionMode.DRAW_NODE: "Dibujar Nodo",
+            InteractionMode.DRAW_FRAME: "Dibujar Frame",
+            InteractionMode.DRAW_SHELL: "Dibujar Shell",
+        }
+        mode_label = mode_names.get(self._interaction_mode, "")
+        snap = self._snap_mgr.status_text()
+
+        # Info de plano
+        plane = template.working_plane_mode
+        if plane == "Free":
+            plane_info = "Plano: Free 3D"
+        elif plane == "XY":
+            plane_info = f"Plano: XY @ Z={template.working_plane_elevation:.1f}"
+        elif plane == "XZ":
+            plane_info = f"Plano: XZ @ Y={template.working_plane_elevation:.1f}"
+        elif plane == "YZ":
+            plane_info = f"Plano: YZ @ X={template.working_plane_elevation:.1f}"
+        else:
+            plane_info = f"Plano: {plane}"
+
+        # Info de propiedades activas
+        props_info = ""
+        if self._interaction_mode == InteractionMode.DRAW_FRAME:
+            section_name = "(sin asignar)"
+            if template.frame_section_tag:
+                sec = self._model.sections.get(template.frame_section_tag)
+                if sec:
+                    section_name = sec.name
+            props_info = f"  |  Sección: {section_name}"
+        elif self._interaction_mode == InteractionMode.DRAW_SHELL:
+            section_name = "(sin asignar)"
+            if template.shell_section_tag:
+                sec = self._model.sections.get(template.shell_section_tag)
+                if sec:
+                    section_name = sec.name
+            props_info = f"  |  Sección: {section_name}"
+
+        self.statusBar().showMessage(
+            f"Modo: {mode_label}  |  {snap}  |  Grid: {template.snap_spacing}m  |  "
+            f"{plane_info}{props_info}  |  Escape → Selección"
+        )
 
     def _handle_draw_node(self, x: float, y: float, z: float) -> None:
         """Crea un nodo en la posición clickeada + offset."""
@@ -711,7 +816,8 @@ class MainWindow(QMainWindow):
 
         if self._frame_first_node is None:
             # === PRIMER CLIC: establecer nodo I ===
-            existing = find_closest_node(self._model, (x, y, z), tolerance=0.15)
+            template = self._model.drawing_template
+            existing = find_closest_node(self._model, (x, y, z), tolerance=template.snap_tolerance)
             if existing is not None:
                 self._frame_first_node = existing
                 node = self._model.nodes[existing]
@@ -742,7 +848,8 @@ class MainWindow(QMainWindow):
             commands: list = []
 
             # Resolver nodo J
-            existing_j = find_closest_node(self._model, (x, y, z), tolerance=0.15)
+            template = self._model.drawing_template
+            existing_j = find_closest_node(self._model, (x, y, z), tolerance=template.snap_tolerance)
             if existing_j is not None:
                 node_j_tag = existing_j
                 self._console.log(f"Frame: nodo J = {existing_j} (existente)")
@@ -824,7 +931,8 @@ class MainWindow(QMainWindow):
         node_labels = {1: "I", 2: "J", 3: "K", 4: "L"}
 
         # Resolver nodo: snap a existente o crear nuevo
-        existing = find_closest_node(self._model, (x, y, z), tolerance=0.15)
+        template = self._model.drawing_template
+        existing = find_closest_node(self._model, (x, y, z), tolerance=template.snap_tolerance)
         commands_for_node: list = []
 
         if existing is not None:
@@ -1194,9 +1302,15 @@ class MainWindow(QMainWindow):
 
             # Refrescar panel si estamos en modo dibujo
             if self._interaction_mode == InteractionMode.DRAW_FRAME:
-                self._properties.show_drawing_template(self._model, "frame")
+                self._properties.show_drawing_template(
+                    self._model, "frame",
+                    on_snap_setting_changed=self._on_snap_setting_changed,
+                )
             elif self._interaction_mode == InteractionMode.DRAW_SHELL:
-                self._properties.show_drawing_template(self._model, "shell")
+                self._properties.show_drawing_template(
+                    self._model, "shell",
+                    on_snap_setting_changed=self._on_snap_setting_changed,
+                )
 
     def _on_define_transf(self) -> None:
         """Abre el diálogo para crear una nueva transformación."""
@@ -1222,7 +1336,10 @@ class MainWindow(QMainWindow):
 
             # Refrescar panel si estamos en modo dibujo frame
             if self._interaction_mode == InteractionMode.DRAW_FRAME:
-                self._properties.show_drawing_template(self._model, "frame")
+                self._properties.show_drawing_template(
+                    self._model, "frame",
+                    on_snap_setting_changed=self._on_snap_setting_changed,
+                )
 
     def _on_define_pattern(self) -> None:
         """Abre el diálogo para crear un patrón de carga."""
