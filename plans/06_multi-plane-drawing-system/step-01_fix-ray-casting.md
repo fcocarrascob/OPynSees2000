@@ -17,16 +17,16 @@ git checkout -b feature/multi-plane-drawing-system
 
 #### 1.1 — Add working plane mode/elevation state and `set_working_plane()` method
 
-- [ ] Open `gui/viewport/vtk_widget.py`
-- [ ] Replace the existing `_working_plane_z` instance variable and the `set_working_plane_z` method with a generalized plane tracking system.
-- [ ] Find this block in `__init__` (around line 88):
+- [x] Open `gui/viewport/vtk_widget.py`
+- [x] Replace the existing `_working_plane_z` instance variable and the `set_working_plane_z` method with a generalized plane tracking system.
+- [x] Find this block in `__init__` (around line 88):
 
 ```python
         # Working plane Z para proyección de rayos
         self._working_plane_z: float = 0.0
 ```
 
-- [ ] Replace it with the following:
+- [x] Replace it with the following:
 
 ```python
         # Working plane state for ray-casting projection
@@ -38,7 +38,7 @@ git checkout -b feature/multi-plane-drawing-system
 
 #### 1.2 — Replace `set_working_plane_z` with `set_working_plane`
 
-- [ ] Find the `set_working_plane_z` method (around line 683):
+- [x] Find the `set_working_plane_z` method (around line 683):
 
 ```python
     def set_working_plane_z(self, z: float) -> None:
@@ -46,7 +46,7 @@ git checkout -b feature/multi-plane-drawing-system
         self._working_plane_z = z
 ```
 
-- [ ] Replace it with:
+- [x] Replace it with:
 
 ```python
     def set_working_plane(self, mode: str, elevation: float) -> None:
@@ -67,8 +67,8 @@ git checkout -b feature/multi-plane-drawing-system
 
 #### 1.3 — Replace _screen_to_world with generalized ray-plane intersection
 
-- [ ] Find the entire `_screen_to_world` method (starts around line 697) and replace it completely.
-- [ ] Delete the existing method and paste this new version:
+- [x] Find the entire `_screen_to_world` method (starts around line 697) and replace it completely.
+- [x] Delete the existing method and paste this new version:
 
 ```python
     def _screen_to_world(self, screen_x: int, screen_y: int) -> tuple[float, float, float] | None:
@@ -163,8 +163,8 @@ git checkout -b feature/multi-plane-drawing-system
 
 #### 1.4 — Update `MainWindow._on_snap_setting_changed` to use `set_working_plane`
 
-- [ ] Open `gui/main_window.py`
-- [ ] Find the `_on_snap_setting_changed` method (around line 730) and replace the block that updates the raycasting plane. Find this code:
+- [x] Open `gui/main_window.py`
+- [x] Find the `_on_snap_setting_changed` method (around line 730) and replace the block that updates the raycasting plane. Find this code:
 
 ```python
             # Actualizar plano Z de raycasting para proyección
@@ -176,7 +176,7 @@ git checkout -b feature/multi-plane-drawing-system
             # pero el snap_with_plane corregirá el eje apropiado
 ```
 
-- [ ] Replace it with:
+- [x] Replace it with:
 
 ```python
             # Actualizar plano de raycasting para proyección
@@ -190,13 +190,13 @@ git checkout -b feature/multi-plane-drawing-system
 
 #### 1.5 — Update `set_mode` to sync working plane on entering drawing mode
 
-- [ ] In the same `gui/main_window.py`, find the `set_mode` method, specifically the `else` block where drawing mode is activated. After the line:
+- [x] In the same `gui/main_window.py`, find the `set_mode` method, specifically the `else` block where drawing mode is activated. After the line:
 
 ```python
             self._snap_mgr.spacing = template.snap_spacing
 ```
 
-- [ ] Add the following line immediately after it:
+- [x] Add the following line immediately after it:
 
 ```python
             # Sincronizar plano de raycasting con template

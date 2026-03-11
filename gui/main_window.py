@@ -616,6 +616,11 @@ class MainWindow(QMainWindow):
             # Sincronizar snap manager con template
             template = self._model.drawing_template
             self._snap_mgr.spacing = template.snap_spacing
+            # Sincronizar plano de raycasting con template
+            self._viewport.set_working_plane(
+                template.working_plane_mode,
+                template.working_plane_elevation,
+            )
 
             # Mostrar plano de trabajo visual
             self._viewport.update_working_plane_visual(
@@ -724,13 +729,11 @@ class MainWindow(QMainWindow):
                 template.snap_spacing,
             )
 
-            # Actualizar plano Z de raycasting para proyección
-            if template.working_plane_mode == "XY":
-                self._viewport.set_working_plane_z(template.working_plane_elevation)
-            elif template.working_plane_mode == "Free":
-                self._viewport.set_working_plane_z(0.0)
-            # Para XZ y YZ, el raycasting sigue proyectando a Z=working_plane_z
-            # pero el snap_with_plane corregirá el eje apropiado
+            # Actualizar plano de raycasting para proyección
+            self._viewport.set_working_plane(
+                template.working_plane_mode,
+                template.working_plane_elevation,
+            )
 
         # Actualizar status bar
         self._update_drawing_statusbar()

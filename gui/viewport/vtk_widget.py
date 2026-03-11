@@ -89,8 +89,9 @@ class VTKViewport(QWidget):
         self._drawing_mode = False
         self._snap_mgr: "SnapManager | None" = None
 
-        # Working plane Z para proyección de rayos
-        self._working_plane_z: float = 0.0
+        # Working plane state for ray-casting projection
+        self._working_plane_mode: str = "XY"   # "XY", "XZ", "YZ", "Free"
+        self._working_plane_elevation: float = 0.0
 
         # Renderer del plano de trabajo visual
         self._working_plane_renderer: WorkingPlaneRenderer | None = None
@@ -648,9 +649,18 @@ class VTKViewport(QWidget):
         """Registra el snap manager para uso durante dibujo."""
         self._snap_mgr = mgr
 
-    def set_working_plane_z(self, z: float) -> None:
-        """Establece la elevación del plano de trabajo para proyección."""
-        self._working_plane_z = z
+    def set_working_plane(self, mode: str, elevation: float) -> None:
+        """Establece el plano de trabajo activo para proyección de rayos.
+
+        Parameters
+        ----------
+        mode : str
+            "XY", "XZ", "YZ" o "Free".
+        elevation : float
+            Elevación del eje bloqueado por el plano.
+        """
+        self._working_plane_mode = mode
+        self._working_plane_elevation = elevation
 
     def update_working_plane_visual(
         self,
@@ -672,7 +682,13 @@ class VTKViewport(QWidget):
     def _screen_to_world(self, screen_x: int, screen_y: int) -> tuple[float, float, float] | None:
         """
         Convierte coordenadas de pantalla a coordenadas del mundo 3D,
-        proyectando el rayo de la cámara sobre el plano Z = _working_plane_z.
+        proyectando el rayo de la cámara sobre el plano de trabajo activo.
+
+        Planos y normales:
+          - XY: normal=(0,0,1), punto=(0,0,elevation)
+          - XZ: normal=(0,1,0), punto=(0,elevation,0)
+          - YZ: normal=(1,0,0), punto=(elevation,0,0)
+          - Free: normal=(0,0,1), punto=(0,0,0) (fallback al plano Z=0)
 
         Retorna None si el rayo es paralelo al plano.
         """
@@ -683,24 +699,16 @@ class VTKViewport(QWidget):
         if size[0] == 0 or size[1] == 0:
             return None
 
-        # Normalizar coordenadas de pantalla [0, 1]
         # Qt da Y desde arriba; VTK espera Y desde abajo
         display_x = screen_x
         display_y = size[1] - screen_y
 
-        # Usar VTK picker para obtener el punto en el plano de trabajo
-        # Crear un WorldPointPicker
-        picker = self.plotter.renderer.GetRenderWindow().GetInteractor()
-        if picker is None:
-            return None
-
-        # Método alternativo: ray casting manual
-        # Obtener posición y dirección del rayo de la cámara
+        # Cámara
         camera = renderer.GetActiveCamera()
         if camera is None:
             return None
 
-        # Coordenadas normalizadas del viewport
+        # Viewport normalization
         vp = renderer.GetViewport()
         vp_width = size[0] * (vp[2] - vp[0])
         vp_height = size[1] * (vp[3] - vp[1])
@@ -708,15 +716,8 @@ class VTKViewport(QWidget):
         if vp_width == 0 or vp_height == 0:
             return None
 
-        # Display to normalized viewport
-        norm_x = (display_x - size[0] * vp[0]) / vp_width
-        norm_y = (display_y - size[1] * vp[1]) / vp_height
+        import vtk  # noqa: F811
 
-        # Usar el coordinate converter de VTK
-        coord = renderer.GetActiveCamera().GetPosition()
-        focal = renderer.GetActiveCamera().GetFocalPoint()
-
-        import vtk
         # Convertir display coords a world coords en near/far planes
         renderer.SetDisplayPoint(display_x, display_y, 0.0)
         renderer.DisplayToWorld()
@@ -733,16 +734,35 @@ class VTKViewport(QWidget):
         # Ray direction
         ray_dir = [far_point[i] - near_point[i] for i in range(3)]
 
-        # Intersect with Z = _working_plane_z
-        # near_point + t * ray_dir = (x, y, _working_plane_z)
-        # near_point[2] + t * ray_dir[2] = _working_plane_z
-        if abs(ray_dir[2]) < 1e-12:
+        # Determine plane normal and point based on working plane mode
+        mode = self._working_plane_mode
+        elev = self._working_plane_elevation
+
+        if mode == "XY":
+            plane_normal = [0.0, 0.0, 1.0]
+            plane_point = [0.0, 0.0, elev]
+        elif mode == "XZ":
+            plane_normal = [0.0, 1.0, 0.0]
+            plane_point = [0.0, elev, 0.0]
+        elif mode == "YZ":
+            plane_normal = [1.0, 0.0, 0.0]
+            plane_point = [elev, 0.0, 0.0]
+        else:
+            # Free mode: fallback to Z=0 plane
+            plane_normal = [0.0, 0.0, 1.0]
+            plane_point = [0.0, 0.0, 0.0]
+
+        # Ray-plane intersection: t = dot(plane_point - ray_origin, normal) / dot(ray_dir, normal)
+        denom = sum(ray_dir[i] * plane_normal[i] for i in range(3))
+        if abs(denom) < 1e-12:
             return None  # Rayo paralelo al plano
 
-        t = (self._working_plane_z - near_point[2]) / ray_dir[2]
+        diff = [plane_point[i] - near_point[i] for i in range(3)]
+        t = sum(diff[i] * plane_normal[i] for i in range(3)) / denom
+
         world_x = near_point[0] + t * ray_dir[0]
         world_y = near_point[1] + t * ray_dir[1]
-        world_z = self._working_plane_z
+        world_z = near_point[2] + t * ray_dir[2]
 
         return (world_x, world_y, world_z)
 
