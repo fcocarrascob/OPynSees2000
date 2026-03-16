@@ -306,22 +306,22 @@ class MainWindow(QMainWindow):
 
         act_iso = QAction("Vista isométrica", self)
         act_iso.setShortcut(QKeySequence("0"))
-        act_iso.triggered.connect(self._viewport.reset_view)
+        act_iso.triggered.connect(self._on_view_iso)
         m_display.addAction(act_iso)
 
         act_xy = QAction("Vista XY (planta)", self)
         act_xy.setShortcut(QKeySequence("7"))
-        act_xy.triggered.connect(self._viewport.set_view_xy)
+        act_xy.triggered.connect(self._on_view_xy)
         m_display.addAction(act_xy)
 
         act_xz = QAction("Vista XZ (frontal)", self)
         act_xz.setShortcut(QKeySequence("1"))
-        act_xz.triggered.connect(self._viewport.set_view_xz)
+        act_xz.triggered.connect(self._on_view_xz)
         m_display.addAction(act_xz)
 
         act_yz = QAction("Vista YZ (lateral)", self)
         act_yz.setShortcut(QKeySequence("3"))
-        act_yz.triggered.connect(self._viewport.set_view_yz)
+        act_yz.triggered.connect(self._on_view_yz)
         m_display.addAction(act_yz)
 
         m_display.addSeparator()
@@ -390,22 +390,22 @@ class MainWindow(QMainWindow):
 
         act_iso = QAction("3D", self)
         act_iso.setToolTip("Vista isométrica (0)")
-        act_iso.triggered.connect(self._viewport.reset_view)
+        act_iso.triggered.connect(self._on_view_iso)
         tb.addAction(act_iso)
 
         act_xy = QAction("XY", self)
         act_xy.setToolTip("Vista planta (7)")
-        act_xy.triggered.connect(self._viewport.set_view_xy)
+        act_xy.triggered.connect(self._on_view_xy)
         tb.addAction(act_xy)
 
         act_xz = QAction("XZ", self)
         act_xz.setToolTip("Vista frontal (1)")
-        act_xz.triggered.connect(self._viewport.set_view_xz)
+        act_xz.triggered.connect(self._on_view_xz)
         tb.addAction(act_xz)
 
         act_yz = QAction("YZ", self)
         act_yz.setToolTip("Vista lateral (3)")
-        act_yz.triggered.connect(self._viewport.set_view_yz)
+        act_yz.triggered.connect(self._on_view_yz)
         tb.addAction(act_yz)
 
         tb.addSeparator()
@@ -617,27 +617,12 @@ class MainWindow(QMainWindow):
             # Sincronizar snap manager con template
             template = self._model.drawing_template
             self._snap_mgr.spacing = template.snap_spacing
-            # Sincronizar plano de raycasting con template
-            self._viewport.set_working_plane(
+
+            # Sincronizar vista, raycasting y filtro de plano
+            self._sync_plane_and_view(
                 template.working_plane_mode,
                 template.working_plane_elevation,
             )
-
-            # Sincronizar filtro de visibilidad por plano
-            self._viewport.set_plane_filter(
-                template.working_plane_mode,
-                template.working_plane_elevation,
-            )
-
-            # Mostrar plano de trabajo visual
-            self._viewport.update_working_plane_visual(
-                template.working_plane_mode,
-                template.working_plane_elevation,
-                template.snap_spacing,
-            )
-
-            # Actualizar status bar con info del plano
-            self._update_drawing_statusbar()
 
             # Actualizar Properties Panel según modo de dibujo
             if mode == InteractionMode.DRAW_FRAME:
@@ -728,22 +713,9 @@ class MainWindow(QMainWindow):
         if field_name == "snap_spacing":
             self._snap_mgr.spacing = value
 
-        # Actualizar visual del plano de trabajo
+        # Actualizar vista, raycasting y filtro cuando cambia plano/elevación/spacing
         if field_name in ("working_plane_mode", "working_plane_elevation", "snap_spacing"):
-            self._viewport.update_working_plane_visual(
-                template.working_plane_mode,
-                template.working_plane_elevation,
-                template.snap_spacing,
-            )
-
-            # Actualizar plano de raycasting para proyección
-            self._viewport.set_working_plane(
-                template.working_plane_mode,
-                template.working_plane_elevation,
-            )
-
-            # Actualizar filtro de visibilidad por plano
-            self._viewport.set_plane_filter(
+            self._sync_plane_and_view(
                 template.working_plane_mode,
                 template.working_plane_elevation,
             )
@@ -800,6 +772,96 @@ class MainWindow(QMainWindow):
             f"Modo: {mode_label}  |  {snap}  |  Grid: {template.snap_spacing}m  |  "
             f"{plane_info}{props_info}  |  Escape → Selección"
         )
+
+    def _sync_plane_and_view(self, plane_mode: str, elevation: float) -> None:
+        """Sync camera view, ray-casting, and element filtering to plane.
+
+        Parameters
+        ----------
+        plane_mode : str
+            "XY", "XZ", "YZ" o "Free".
+        elevation : float
+            Elevación del eje bloqueado por el plano.
+        """
+        # Update VTK viewport ray-casting plane
+        self._viewport.set_working_plane(plane_mode, elevation)
+
+        # Update element visibility filter
+        self._viewport.set_plane_filter(plane_mode, elevation)
+
+        # Update camera view
+        if plane_mode == "XY":
+            self._viewport.set_view_xy()
+        elif plane_mode == "XZ":
+            self._viewport.set_view_xz()
+        elif plane_mode == "YZ":
+            self._viewport.set_view_yz()
+        else:  # Free
+            self._viewport.reset_view()
+
+        # Update working plane visual
+        template = self._model.drawing_template
+        self._viewport.update_working_plane_visual(
+            plane_mode, elevation, template.snap_spacing,
+        )
+
+        # Update status bar
+        self._update_drawing_statusbar()
+
+    def _on_view_iso(self) -> None:
+        """Handle 3D/Isometric view button."""
+        if self._interaction_mode != InteractionMode.SELECT:
+            # In drawing mode: switch plane to Free
+            template = self._model.drawing_template
+            template.working_plane_mode = "Free"
+            self._sync_plane_and_view("Free", template.working_plane_elevation)
+            # Refresh properties panel to reflect change
+            self._refresh_drawing_properties()
+        else:
+            self._viewport.reset_view()
+
+    def _on_view_xy(self) -> None:
+        """Handle XY view button."""
+        if self._interaction_mode != InteractionMode.SELECT:
+            template = self._model.drawing_template
+            template.working_plane_mode = "XY"
+            self._sync_plane_and_view("XY", template.working_plane_elevation)
+            self._refresh_drawing_properties()
+        else:
+            self._viewport.set_view_xy()
+
+    def _on_view_xz(self) -> None:
+        """Handle XZ view button."""
+        if self._interaction_mode != InteractionMode.SELECT:
+            template = self._model.drawing_template
+            template.working_plane_mode = "XZ"
+            self._sync_plane_and_view("XZ", template.working_plane_elevation)
+            self._refresh_drawing_properties()
+        else:
+            self._viewport.set_view_xz()
+
+    def _on_view_yz(self) -> None:
+        """Handle YZ view button."""
+        if self._interaction_mode != InteractionMode.SELECT:
+            template = self._model.drawing_template
+            template.working_plane_mode = "YZ"
+            self._sync_plane_and_view("YZ", template.working_plane_elevation)
+            self._refresh_drawing_properties()
+        else:
+            self._viewport.set_view_yz()
+
+    def _refresh_drawing_properties(self) -> None:
+        """Refresh properties panel when in a drawing mode."""
+        if self._interaction_mode == InteractionMode.DRAW_FRAME:
+            self._properties.show_drawing_template(
+                self._model, "frame",
+                on_snap_setting_changed=self._on_snap_setting_changed,
+            )
+        elif self._interaction_mode == InteractionMode.DRAW_SHELL:
+            self._properties.show_drawing_template(
+                self._model, "shell",
+                on_snap_setting_changed=self._on_snap_setting_changed,
+            )
 
     def _handle_draw_node(self, x: float, y: float, z: float) -> None:
         """Crea un nodo en la posición clickeada + offset."""
